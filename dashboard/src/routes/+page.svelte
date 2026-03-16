@@ -1577,8 +1577,8 @@
         ] as Record<string, unknown>;
 
         if (
-          downloadKind !== "DownloadOngoing" &&
-          downloadKind !== "DownloadPending"
+          downloadKind !== "ModelDownloading" &&
+          downloadKind !== "ModelNotDownloading"
         )
           continue;
         if (!downloadPayload) continue;
@@ -1595,10 +1595,10 @@
           if (downloadModelId !== modelId) continue;
         }
 
-        // For DownloadPending with partial bytes (paused/resumed downloads),
+        // For ModelNotDownloading with partial bytes (paused/resumed downloads),
         // synthesize a progress object from the top-level downloaded/total fields
         let progress: DownloadProgress | null;
-        if (downloadKind === "DownloadPending") {
+        if (downloadKind === "ModelNotDownloading") {
           const pendingDownloaded = getBytes(
             downloadPayload.downloaded ??
               downloadPayload.downloaded_bytes ??
@@ -1758,8 +1758,8 @@
           downloadKind
         ] as Record<string, unknown>;
 
-        // Handle DownloadFailed - return immediately with error info
-        if (downloadKind === "DownloadFailed") {
+        // Handle ModelDownloadFailed - return immediately with error info
+        if (downloadKind === "ModelDownloadFailed") {
           const downloadModelId = extractModelIdFromDownload(downloadPayload);
           if (
             instanceModelId &&
@@ -1778,7 +1778,7 @@
           }
         }
 
-        if (downloadKind === "DownloadRejected") {
+        if (downloadKind === "ModelRejected") {
           const downloadModelId = extractModelIdFromDownload(downloadPayload);
           if (
             instanceModelId &&
@@ -1797,27 +1797,9 @@
           }
         }
 
-        if (downloadKind === "DownloadEvicted") {
-          const downloadModelId = extractModelIdFromDownload(downloadPayload);
-          if (
-            instanceModelId &&
-            downloadModelId &&
-            downloadModelId === instanceModelId
-          ) {
-            return {
-              isDownloading: false,
-              isFailed: false,
-              errorMessage: null,
-              progress: null,
-              statusText: "EVICTED",
-              perNode: [],
-            };
-          }
-        }
-
         if (
-          downloadKind !== "DownloadOngoing" &&
-          downloadKind !== "DownloadPending"
+          downloadKind !== "ModelDownloading" &&
+          downloadKind !== "ModelNotDownloading"
         )
           continue;
         if (!downloadPayload) continue;
@@ -1829,9 +1811,9 @@
           downloadModelId &&
           downloadModelId === instanceModelId
         ) {
-          // For DownloadPending with partial bytes, synthesize progress
+          // For ModelNotDownloading with partial bytes, synthesize progress
           let progress: DownloadProgress | null;
-          if (downloadKind === "DownloadPending") {
+          if (downloadKind === "ModelNotDownloading") {
             const pendingDownloaded = getBytes(
               downloadPayload.downloaded ??
                 downloadPayload.downloaded_bytes ??
@@ -2591,15 +2573,6 @@
         // Any -> Shutdown
         if (prevStatus !== "SHUTDOWN" && currentStatus === "SHUTDOWN") {
           addToast({ type: "info", message: `Model shut down: ${shortName}` });
-        }
-
-        // Any -> Evicted
-        if (prevStatus !== "EVICTED" && currentStatus === "EVICTED") {
-          addToast({
-            type: "info",
-            message: `Model evicted: ${shortName}`,
-            duration: 6000,
-          });
         }
       }
     }
