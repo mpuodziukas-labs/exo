@@ -231,7 +231,8 @@ def _scan_model_directory(
                         path=rel_path,
                         size=None,
                     )
-        except Exception:
+        except Exception as exc:
+            logger.debug("Skipping index file {}: {}", index_file, exc)
             continue
 
     return list(entries_by_path.values())
