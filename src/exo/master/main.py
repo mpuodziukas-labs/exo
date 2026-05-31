@@ -28,7 +28,9 @@ from exo.shared.types.commands import (
     TextGeneration,
 )
 from exo.shared.types.common import CommandId, NodeId, SessionId, SystemId
+from exo.shared.types.chunks import ErrorChunk
 from exo.shared.types.events import (
+    ChunkGenerated,
     Event,
     GlobalForwarderEvent,
     IndexedEvent,
@@ -356,7 +358,16 @@ class Master:
                     for event in generated_events:
                         await self.event_sender.send(event)
                 except ValueError as e:
-                    logger.opt(exception=e).warning("Error in command processor")
+                    logger.opt(exception=e).warning("Error in command processor: %s", e)
+                    # Surface error to caller so stream terminates instead of hanging forever
+                    if isinstance(command, TextGeneration):
+                        error_chunk = ErrorChunk(
+                            model=command.task_params.model,
+                            error_message=str(e),
+                        )
+                        await self.event_sender.send(
+                            ChunkGenerated(command_id=command.command_id, chunk=error_chunk)
+                        )
 
     # These plan loops are the cracks showing in our event sourcing architecture - more things could be commands
     async def _plan(self) -> None:
