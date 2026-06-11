@@ -181,6 +181,27 @@ _API_EVENT_LOG_DIR = EXO_EVENT_LOG_DIR / "api"
 ONBOARDING_COMPLETE_FILE = EXO_CACHE_HOME / "onboarding_complete"
 
 
+def ensure_placement_feasible(command: PlaceInstance, state: State) -> None:
+    """Reject placements the current topology can never satisfy.
+
+    Placement runs asynchronously in the master's command processor, so an
+    infeasible request would otherwise be accepted ("Command received.") and
+    fail silently — the client polls for an instance that never appears.
+    Dry-running the placement against the API's state replica surfaces the
+    failure synchronously as a 400.
+    """
+    try:
+        get_instance_placements(
+            command,
+            state.topology,
+            state.instances,
+            state.node_memory,
+            state.node_network,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 def _format_to_content_type(image_format: Literal["png", "jpeg", "webp"] | None) -> str:
     return f"image/{image_format or 'png'}"
 
@@ -359,6 +380,7 @@ class API:
             instance_meta=payload.instance_meta,
             min_nodes=payload.min_nodes,
         )
+        ensure_placement_feasible(command, self.state)
         await self._send(command)
 
         return CreateInstanceResponse(
