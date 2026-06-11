@@ -110,8 +110,8 @@ class TestRateLimiterPerClientIsolation:
 
     def test_ip_client_id(self) -> None:
         rl = RateLimiter()
-        cid = rl.client_id_from_request(None, "192.168.1.1")
-        assert cid == "ip:192.168.1.1"
+        cid = rl.client_id_from_request(None, "192.0.2.1")
+        assert cid == "ip:192.0.2.1"
 
     def test_no_api_key_no_ip_gives_anonymous(self) -> None:
         rl = RateLimiter()

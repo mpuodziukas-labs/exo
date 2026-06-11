@@ -22,8 +22,8 @@ from exo.master.adaptive_timeout import (
     AdaptiveTimeoutCalculator,
 )
 
-MODEL_A = "mlx-community/Llama-3b-4bit"
-MODEL_B = "mlx-community/Qwen3-30B"
+MODEL_A = "org/model-small-4bit"
+MODEL_B = "org/model-large-8bit"
 
 
 # ---------------------------------------------------------------------------
