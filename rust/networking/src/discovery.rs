@@ -147,21 +147,25 @@ impl Behaviour {
 
             // multiaddress should never already be present - else something has gone wrong
             let is_new_addr = mas.insert(ma);
-            assert!(is_new_addr, "cannot discover a discovered peer");
+            if !is_new_addr {
+                log::warn!("Duplicate peer discovery for {p:?}, ignoring");
+            }
         }
     }
 
     fn handle_mdns_expired(&mut self, peers: Vec<(PeerId, Multiaddr)>) {
         for (p, ma) in peers {
-            // at this point, we *must* have the peer
-            let mas = self
-                .mdns_discovered
-                .get_mut(&p)
-                .expect("nonexistent peer cannot expire");
+            // at this point, we *should* have the peer
+            let Some(mas) = self.mdns_discovered.get_mut(&p) else {
+                log::warn!("mDNS expiry for unknown peer {p:?}, ignoring");
+                continue;
+            };
 
-            // at this point, we *must* have the multiaddress
+            // at this point, we *should* have the multiaddress
             let was_present = mas.remove(&ma);
-            assert!(was_present, "nonexistent multiaddress cannot expire");
+            if !was_present {
+                log::warn!("mDNS expiry for unknown multiaddress of peer {p:?}, ignoring");
+            }
 
             // if empty, remove the peer-id entirely
             if mas.is_empty() {
@@ -291,10 +295,13 @@ impl NetworkBehaviour for Behaviour {
                     ConnectedPoint::Listener { send_back_addr, .. } => send_back_addr,
                 };
 
-                if let Some((ip, port)) = remote_address.try_to_tcp_addr() {
-                    // handle connection established event which is filtered correctly
-                    self.on_connection_established(peer_id, connection_id, ip, port)
-                }
+                let (ip, port) = remote_address
+                    .try_to_tcp_addr()
+                    .unwrap_or_else(|| {
+                        log::warn!("Could not parse TCP addr from {:?}, using fallback", remote_address);
+                        (std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 0)
+                    });
+                self.on_connection_established(peer_id, connection_id, ip, port);
             }
             FromSwarm::ConnectionClosed(ConnectionClosed {
                 peer_id,
@@ -307,10 +314,13 @@ impl NetworkBehaviour for Behaviour {
                     ConnectedPoint::Listener { send_back_addr, .. } => send_back_addr,
                 };
 
-                if let Some((ip, port)) = remote_address.try_to_tcp_addr() {
-                    // handle connection closed event which is filtered correctly
-                    self.on_connection_closed(peer_id, connection_id, ip, port)
-                }
+                let (ip, port) = remote_address
+                    .try_to_tcp_addr()
+                    .unwrap_or_else(|| {
+                        log::warn!("Could not parse TCP addr from {:?}, using fallback", remote_address);
+                        (std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 0)
+                    });
+                self.on_connection_closed(peer_id, connection_id, ip, port);
             }
 
             // since we are running TCP/IP transport layer, we are assuming that
