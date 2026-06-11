@@ -19,8 +19,9 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from loguru import logger
@@ -88,7 +89,6 @@ class HedgingController:
         self._stats.total_hedged += 1
 
         primary_task: asyncio.Task[Any] = asyncio.ensure_future(primary_coro)
-        hedge_task: asyncio.Task[Any] | None = None
 
         async def _fire_hedge() -> Any:
             await asyncio.sleep(delay_ms / 1000.0)
@@ -107,10 +107,19 @@ class HedgingController:
                 t.cancel()
             raise
 
-        # Cancel the loser.
+        # Cancel the loser and reap it so cancellation completes.
         for t in pending:
             t.cancel()
             self._stats.cancelled += 1
+        for t in pending:
+            with contextlib.suppress(asyncio.CancelledError):
+                await t
+        if hedge_wrapper in pending:
+            # Cancellation can land during the delay sleep, in which case
+            # hedge_coro was never awaited — close it to avoid a
+            # "coroutine was never awaited" RuntimeWarning. close() is a
+            # no-op for coroutines that already started or finished.
+            hedge_coro.close()
 
         winner_task = next(iter(done))
 
