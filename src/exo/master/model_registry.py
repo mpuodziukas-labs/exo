@@ -7,6 +7,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Any
 
+from loguru import logger
 
 _REGISTRY_PATH = Path.home() / ".exo" / "model_registry.json"
 _lock = Lock()

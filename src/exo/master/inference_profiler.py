@@ -9,7 +9,6 @@ from typing import Any, Generator
 
 from loguru import logger
 
-
 _KEEP_PROFILES = 500
 _KEEP_SAMPLES = 1000  # max flat latency samples per model
 
@@ -204,7 +203,9 @@ class InferenceProfiler:
             sorted_lats = sorted(lats)
             n = len(sorted_lats)
 
-            def _pct(p: float) -> float:
+            def _pct(
+                p: float, n: int = n, sorted_lats: list[float] = sorted_lats
+            ) -> float:
                 idx = max(0, int(n * p / 100) - 1)
                 return round(sorted_lats[idx], 2)
 
