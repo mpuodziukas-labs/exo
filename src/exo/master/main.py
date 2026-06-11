@@ -12,6 +12,7 @@ from exo.master.placement import (
 )
 from exo.shared.apply import apply
 from exo.shared.constants import EXO_EVENT_LOG_DIR, EXO_TRACING_ENABLED
+from exo.shared.types.chunks import ErrorChunk
 from exo.shared.types.commands import (
     CreateInstance,
     DeleteInstance,
@@ -28,7 +29,6 @@ from exo.shared.types.commands import (
     TextGeneration,
 )
 from exo.shared.types.common import CommandId, NodeId, SessionId, SystemId
-from exo.shared.types.chunks import ErrorChunk
 from exo.shared.types.events import (
     ChunkGenerated,
     Event,

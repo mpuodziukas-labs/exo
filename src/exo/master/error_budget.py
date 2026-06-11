@@ -4,10 +4,12 @@ Computes error rate and remaining error budget (SLO target: 99.9% success = 0.1%
 Alerts when budget is >50% consumed.
 """
 from __future__ import annotations
+
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
+
 from loguru import logger
 
 _SLO_TARGET = 0.999          # 99.9% success rate

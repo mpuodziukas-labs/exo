@@ -4,7 +4,9 @@ old config files forward. Each migration is a pure function from old dict → ne
 Ensures backward compatibility when config fields change.
 """
 from __future__ import annotations
+
 from typing import Any, Callable
+
 from loguru import logger
 
 _CURRENT_VERSION = 3

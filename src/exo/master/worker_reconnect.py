@@ -4,9 +4,11 @@ with exponential backoff. Prevents thundering-herd reconnects after a master res
 Each worker gets an independent backoff state; resets on successful reconnect.
 """
 from __future__ import annotations
+
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
+
 from loguru import logger
 
 _BASE_DELAY = 1.0     # seconds

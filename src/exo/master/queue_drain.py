@@ -4,10 +4,12 @@ in-flight inference requests to complete before stopping. Tracks active
 request lifecycle (started/finished) so the drain loop knows when to exit.
 """
 from __future__ import annotations
+
 import asyncio
 import time
 from dataclasses import dataclass, field
 from typing import Any
+
 from loguru import logger
 
 _DRAIN_TIMEOUT = 30.0  # max seconds to wait for drain

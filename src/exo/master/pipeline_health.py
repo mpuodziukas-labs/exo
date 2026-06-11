@@ -4,10 +4,12 @@ for the end-to-end inference pipeline by combining scores from all subsystems.
 Used as the primary dashboard signal and for automated gate decisions.
 """
 from __future__ import annotations
+
 import importlib
 import time
 from dataclasses import dataclass
 from typing import Any
+
 from loguru import logger
 
 

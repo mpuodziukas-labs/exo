@@ -31,8 +31,8 @@ class PrometheusAggregator:
         parts: list[str] = []
 
         # Add scrape timestamp
-        parts.append(f"# HELP exo_scrape_timestamp_seconds Last scrape timestamp\n")
-        parts.append(f"# TYPE exo_scrape_timestamp_seconds gauge\n")
+        parts.append("# HELP exo_scrape_timestamp_seconds Last scrape timestamp\n")
+        parts.append("# TYPE exo_scrape_timestamp_seconds gauge\n")
         parts.append(f"exo_scrape_timestamp_seconds {time.time():.3f}\n\n")
 
         for name, source in self._sources.items():

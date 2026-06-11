@@ -6,7 +6,6 @@ from typing import Any
 
 from loguru import logger
 
-
 _DEFAULT_RPM = 60        # requests per minute per client
 _DEFAULT_TPM = 100_000   # tokens per minute per client
 _WINDOW_S = 60.0

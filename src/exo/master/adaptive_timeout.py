@@ -5,9 +5,6 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
-from loguru import logger
-
-
 _WINDOW = 200
 _SAFETY_MULTIPLIER = 1.5     # p99 * 1.5 = adaptive timeout
 _MIN_TIMEOUT_S = 5.0

@@ -4,10 +4,12 @@ Per-model inference profiler: tracks TTFT (time-to-first-token), TPS
 p50/p99 statistics over the last 100 requests per model.
 """
 from __future__ import annotations
+
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
+
 from loguru import logger
 
 

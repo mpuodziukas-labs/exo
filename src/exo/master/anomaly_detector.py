@@ -4,11 +4,13 @@ Inference anomaly detector: detects statistical anomalies in inference metrics
 Fires SSE events and log warnings when anomalies are detected.
 """
 from __future__ import annotations
+
 import math
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
+
 from loguru import logger
 
 _WINDOW = 50        # rolling window size

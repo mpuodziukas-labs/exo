@@ -4,9 +4,11 @@ self_check() method (if it exists) or checks that the object is non-None and
 has expected attributes. Reports a structured health report at startup.
 """
 from __future__ import annotations
+
 import importlib
 from dataclasses import dataclass
 from typing import Any
+
 from loguru import logger
 
 

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os as _os
 import time
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any
 
 from loguru import logger
-
 
 _DEFAULT_TTL = 600.0   # 10 minutes
 _MAX_ENTRIES = 5_000
@@ -147,7 +147,7 @@ class InferenceResultCache:
         return count
 
 
-import os as _os
+
 INFERENCE_RESULT_CACHE = InferenceResultCache(
     cache_deterministic_only=_os.getenv("EXO_CACHE_ALL_TEMPS", "0") != "1"
 )

@@ -4,11 +4,14 @@ CB open for all active workers, or health_score < 0.3), switch to DEGRADED mode
 and serve only cached responses. Blocks new inference; returns 503 with Retry-After.
 """
 from __future__ import annotations
+
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
 from loguru import logger
+
 
 class DegradationLevel(str, Enum):
     NORMAL = "normal"

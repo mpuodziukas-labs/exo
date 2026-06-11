@@ -24,7 +24,6 @@ from typing import Any
 
 from loguru import logger
 
-
 _VIOLATION_WINDOW_S: float = 60.0      # sliding window for counting violations
 _VIOLATION_THRESHOLD: int = 5          # violations in window → throttle
 _THROTTLE_MIN_GAP_S: float = 10.0     # throttled client: min seconds between requests

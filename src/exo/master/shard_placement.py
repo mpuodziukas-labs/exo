@@ -22,7 +22,6 @@ from loguru import logger
 
 from exo.master.node_registry import NODE_REGISTRY, NodeCapability
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------

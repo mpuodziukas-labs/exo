@@ -5,7 +5,10 @@ import hashlib
 import json
 import os
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
+from dataclasses import dataclass as _dataclass
+from dataclasses import field as _field
 from typing import Any
 
 from loguru import logger
@@ -160,8 +163,6 @@ DEDUP = RequestDeduplicator()
 # Falls back to SHA-256(request_body[:512]) if no key provided.
 # ---------------------------------------------------------------------------
 
-from collections import OrderedDict
-from dataclasses import dataclass as _dataclass, field as _field
 
 _DEFAULT_TTL = 300.0   # 5 minutes
 _MAX_ENTRIES = 10_000

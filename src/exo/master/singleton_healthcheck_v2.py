@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable
 
 from loguru import logger

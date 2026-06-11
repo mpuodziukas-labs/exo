@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from loguru import logger
-
 
 _BATCH_TIMEOUT = 60.0   # seconds per item
 _MAX_BATCH_SIZE = 32

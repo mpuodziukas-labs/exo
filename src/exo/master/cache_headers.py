@@ -4,8 +4,8 @@ API responses. Inference responses are never cached (private, no-store).
 Static/info endpoints get short max-age. Health endpoints get no-cache with revalidation.
 """
 from __future__ import annotations
-from typing import Any
 
+from typing import Any
 
 # Endpoint prefix → cache policy
 _POLICIES: dict[str, dict[str, str]] = {

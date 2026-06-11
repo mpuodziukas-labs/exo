@@ -24,8 +24,8 @@ from typing import Final, Literal
 
 from loguru import logger
 
-from exo.master.heartbeat_monitor import HEARTBEAT_MONITOR
 from exo.master.health_score import HEALTH_SCORER
+from exo.master.heartbeat_monitor import HEARTBEAT_MONITOR
 from exo.master.link_health import LINK_MONITOR
 from exo.master.node_registry import NODE_REGISTRY
 from exo.master.utilization_tracker import UTILIZATION_TRACKER

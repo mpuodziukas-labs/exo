@@ -120,11 +120,13 @@ class WorkerCircuitBreaker:
                 self._opened_at = now
                 return
 
-            if self.state == WorkerCircuitState.CLOSED:
-                if len(self._failure_timestamps) >= self.failure_threshold:
-                    self.state = WorkerCircuitState.OPEN
-                    self._opened_at = now
-                    self.total_trips += 1
+            if (
+                self.state == WorkerCircuitState.CLOSED
+                and len(self._failure_timestamps) >= self.failure_threshold
+            ):
+                self.state = WorkerCircuitState.OPEN
+                self._opened_at = now
+                self.total_trips += 1
 
     @property
     def is_open(self) -> bool:

@@ -4,9 +4,11 @@ based on its SLA tier. Tracks elapsed time at key phases (queue, prefill, decode
 Cancels the request if the budget is exceeded before completion.
 """
 from __future__ import annotations
+
 import time
 from dataclasses import dataclass, field
 from typing import Any
+
 from loguru import logger
 
 # Budget seconds per SLA tier

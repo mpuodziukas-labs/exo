@@ -14,14 +14,16 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import deque
-
-from exo.master.adaptive_health_interval import ADAPTIVE_HEALTH_INTERVAL
 from dataclasses import dataclass
 from typing import Literal
 
 from loguru import logger
 
-from exo.master.circuit_breaker import CIRCUIT_BREAKERS, CircuitState  # CircuitState used for .value string comparisons
+from exo.master.adaptive_health_interval import ADAPTIVE_HEALTH_INTERVAL
+from exo.master.circuit_breaker import (  # CircuitState used for .value string comparisons
+    CIRCUIT_BREAKERS,
+    CircuitState,
+)
 from exo.master.event_stream import emit as emit_cluster_event
 from exo.master.link_health import LINK_MONITOR
 from exo.master.memory_monitor import MEMORY_MONITOR

@@ -20,14 +20,14 @@ from __future__ import annotations
 
 import time
 from collections import deque
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from loguru import logger
 
 from exo.master.circuit_breaker import CIRCUIT_BREAKERS, CircuitState
-from exo.master.heartbeat_monitor import HEARTBEAT_MONITOR
 from exo.master.event_stream import emit as emit_cluster_event
+from exo.master.heartbeat_monitor import HEARTBEAT_MONITOR
 
 # ---------------------------------------------------------------------------
 # Data model

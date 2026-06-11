@@ -7,10 +7,12 @@ to the SSE stream. Supports three modes:
 Configurable via EXO_FLUSH_MODE env var.
 """
 from __future__ import annotations
+
 import os
 import re
 from enum import Enum
 from typing import Any
+
 from loguru import logger
 
 _FLUSH_MODE_ENV = os.getenv("EXO_FLUSH_MODE", "immediate")

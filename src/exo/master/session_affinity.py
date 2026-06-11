@@ -4,10 +4,12 @@ same worker node that handled the first turn (KV cache locality).
 Tracks session → node_id mapping with TTL expiry and LRU eviction.
 """
 from __future__ import annotations
+
 import collections
 import time
 from dataclasses import dataclass, field
 from typing import Any
+
 from loguru import logger
 
 _DEFAULT_TTL = 1800.0   # 30 minutes

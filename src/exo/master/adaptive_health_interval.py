@@ -4,9 +4,11 @@ under low load reduce it to save overhead. Bounds: 1s min, 30s max.
 Uses exponential smoothing on request rate to determine load tier.
 """
 from __future__ import annotations
+
 import time
 from dataclasses import dataclass, field
 from typing import Any
+
 from loguru import logger
 
 # Load tier thresholds (requests per second)

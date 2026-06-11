@@ -5,9 +5,11 @@ repetition loops, excessive whitespace, and null byte contamination.
 Logs issues but only blocks on critical failures (null bytes, empty).
 """
 from __future__ import annotations
+
 import re
 from dataclasses import dataclass
 from typing import Any
+
 from loguru import logger
 
 _MAX_REPETITION_WINDOW = 50    # chars

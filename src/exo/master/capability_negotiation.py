@@ -4,8 +4,10 @@ the node has sufficient capabilities (RAM, FLOPS, MLX version, features).
 Returns negotiation result explaining why a node was accepted or rejected.
 """
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Any
+
 from loguru import logger
 
 # Minimum requirements per model size tier (rough heuristics)
