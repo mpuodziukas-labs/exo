@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import os
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from threading import Lock
 from typing import Any
@@ -63,7 +62,11 @@ class RateLimiter:
     """
 
     def __init__(self) -> None:
-        self._buckets: dict[str, TokenBucket] = defaultdict(self._new_bucket)
+        # Plain dict — _get_or_create_bucket is the ONLY creation path.
+        # (A defaultdict factory here once hardcoded the authenticated RPM,
+        # handing anonymous clients 6x their intended capacity on any direct
+        # subscript access.)
+        self._buckets: dict[str, TokenBucket] = {}
         self._lock = Lock()
         self._rejected_total: int = 0
         self._allowed_total: int = 0
@@ -76,13 +79,6 @@ class RateLimiter:
         if client_id == "anonymous":
             return float(os.getenv("EXO_RATE_LIMIT_ANONYMOUS_RPM", "10"))
         return float(os.getenv("EXO_RATE_LIMIT_RPM", "60"))
-
-    def _new_bucket(self) -> TokenBucket:
-        rpm = float(os.getenv("EXO_RATE_LIMIT_RPM", "60"))
-        burst = float(os.getenv("EXO_RATE_LIMIT_BURST", "1.5"))
-        refill_rate = rpm / 60.0  # tokens per second
-        capacity = rpm * burst / 60.0
-        return TokenBucket(capacity=capacity, refill_rate=refill_rate, tokens=capacity)
 
     def _get_or_create_bucket(self, client_id: str) -> TokenBucket:
         if client_id not in self._buckets:
