@@ -1,7 +1,7 @@
 use std::pin::Pin;
 
-use crate::swarm::transport::tcp_transport;
 use crate::alias;
+use crate::swarm::transport::tcp_transport;
 pub use behaviour::{Behaviour, BehaviourEvent};
 use futures_lite::{Stream, StreamExt};
 use libp2p::{Multiaddr, PeerId, SwarmBuilder, gossipsub, identity, swarm::SwarmEvent};
@@ -149,9 +149,7 @@ fn filter_swarm_event(event: SwarmEvent<BehaviourEvent>) -> Option<FromSwarm> {
         SwarmEvent::ConnectionEstablished { peer_id, .. } => {
             Some(FromSwarm::Discovered { peer_id })
         }
-        SwarmEvent::ConnectionClosed { peer_id, .. } => {
-            Some(FromSwarm::Expired { peer_id })
-        }
+        SwarmEvent::ConnectionClosed { peer_id, .. } => Some(FromSwarm::Expired { peer_id }),
         _ => None,
     }
 }

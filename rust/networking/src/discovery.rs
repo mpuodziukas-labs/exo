@@ -295,12 +295,13 @@ impl NetworkBehaviour for Behaviour {
                     ConnectedPoint::Listener { send_back_addr, .. } => send_back_addr,
                 };
 
-                let (ip, port) = remote_address
-                    .try_to_tcp_addr()
-                    .unwrap_or_else(|| {
-                        log::warn!("Could not parse TCP addr from {:?}, using fallback", remote_address);
-                        (std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 0)
-                    });
+                let (ip, port) = remote_address.try_to_tcp_addr().unwrap_or_else(|| {
+                    log::warn!(
+                        "Could not parse TCP addr from {:?}, using fallback",
+                        remote_address
+                    );
+                    (std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 0)
+                });
                 self.on_connection_established(peer_id, connection_id, ip, port);
             }
             FromSwarm::ConnectionClosed(ConnectionClosed {
@@ -314,12 +315,13 @@ impl NetworkBehaviour for Behaviour {
                     ConnectedPoint::Listener { send_back_addr, .. } => send_back_addr,
                 };
 
-                let (ip, port) = remote_address
-                    .try_to_tcp_addr()
-                    .unwrap_or_else(|| {
-                        log::warn!("Could not parse TCP addr from {:?}, using fallback", remote_address);
-                        (std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 0)
-                    });
+                let (ip, port) = remote_address.try_to_tcp_addr().unwrap_or_else(|| {
+                    log::warn!(
+                        "Could not parse TCP addr from {:?}, using fallback",
+                        remote_address
+                    );
+                    (std::net::IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), 0)
+                });
                 self.on_connection_closed(peer_id, connection_id, ip, port);
             }
 
