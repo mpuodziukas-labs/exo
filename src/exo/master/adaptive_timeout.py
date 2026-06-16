@@ -6,14 +6,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 _WINDOW = 200
-_SAFETY_MULTIPLIER = 1.5     # p99 * 1.5 = adaptive timeout
+_SAFETY_MULTIPLIER = 1.5  # p99 * 1.5 = adaptive timeout
 _MIN_TIMEOUT_S = 5.0
 _MAX_TIMEOUT_S = 300.0
-_FALLBACK_TIMEOUT_S = 60.0   # used when < 10 samples
+_FALLBACK_TIMEOUT_S = 60.0  # used when < 10 samples
 
 # Priority tier multipliers applied to base adaptive timeout
 _TIER_MULTIPLIERS: dict[str, float] = {
-    "critical": 3.0,   # critical gets 3x base (never timeout a critical request prematurely)
+    "critical": 3.0,  # critical gets 3x base (never timeout a critical request prematurely)
     "high": 2.0,
     "normal": 1.5,
     "low": 1.0,
@@ -65,16 +65,18 @@ class AdaptiveTimeoutCalculator:
         results = []
         for model_id in self._samples:
             p99 = self._p99(model_id)
-            results.append({
-                "model_id": model_id,
-                "sample_count": len(self._samples[model_id]),
-                "p99_latency_s": round(p99, 3) if p99 else None,
-                "base_timeout_s": round(self.base_timeout(model_id), 2),
-                "timeouts_by_priority": {
-                    tier: round(self.timeout_for(model_id, tier), 2)
-                    for tier in _TIER_MULTIPLIERS
-                },
-            })
+            results.append(
+                {
+                    "model_id": model_id,
+                    "sample_count": len(self._samples[model_id]),
+                    "p99_latency_s": round(p99, 3) if p99 else None,
+                    "base_timeout_s": round(self.base_timeout(model_id), 2),
+                    "timeouts_by_priority": {
+                        tier: round(self.timeout_for(model_id, tier), 2)
+                        for tier in _TIER_MULTIPLIERS
+                    },
+                }
+            )
         return results
 
 

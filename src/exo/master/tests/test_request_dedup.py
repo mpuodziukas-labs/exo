@@ -12,6 +12,7 @@ Focuses on:
 - Async RequestDeduplicator: new vs hit entry, complete()/fail() propagation
 - Expired entry eviction via cleanup_expired()
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,6 +31,7 @@ from exo.master.request_dedup import (
 # ---------------------------------------------------------------------------
 # Pure helpers
 # ---------------------------------------------------------------------------
+
 
 class TestIsDeterministic:
     def test_temperature_zero_is_deterministic(self) -> None:
@@ -67,6 +69,7 @@ class TestComputeDedupKey:
 # ---------------------------------------------------------------------------
 # RequestDedup (LRU idempotency cache)
 # ---------------------------------------------------------------------------
+
 
 class TestRequestDedupCache:
     def test_miss_on_unknown_key(self) -> None:
@@ -112,8 +115,8 @@ class TestRequestDedupCache:
     def test_stats_hit_rate(self) -> None:
         cache = RequestDedup()
         cache.register("k", "h", 200)
-        cache.check("k")          # hit
-        cache.check("missing")    # miss
+        cache.check("k")  # hit
+        cache.check("missing")  # miss
         s = cache.stats()
         assert s["hits"] == 1
         assert s["misses"] == 1
@@ -124,6 +127,7 @@ class TestRequestDedupCache:
         h = RequestDedup.content_hash(body)
         # Must equal sha256 of first 512 bytes, 16-char hex
         import hashlib
+
         expected = hashlib.sha256(body[:512]).hexdigest()[:16]
         assert h == expected
 
@@ -131,6 +135,7 @@ class TestRequestDedupCache:
 # ---------------------------------------------------------------------------
 # RequestDeduplicator (async in-flight dedup)
 # ---------------------------------------------------------------------------
+
 
 class TestRequestDeduplicator:
     def test_first_caller_gets_is_new_true(self) -> None:

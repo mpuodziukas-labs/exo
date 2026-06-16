@@ -10,6 +10,7 @@ Focuses on:
 - get_stats() aggregates totals and present counts per model
 - Partial presence: some shards present, some absent
 """
+
 from __future__ import annotations
 
 from exo.master.shard_validator import ShardValidator

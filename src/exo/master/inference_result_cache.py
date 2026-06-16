@@ -10,7 +10,7 @@ from typing import Any
 
 from loguru import logger
 
-_DEFAULT_TTL = 600.0   # 10 minutes
+_DEFAULT_TTL = 600.0  # 10 minutes
 _MAX_ENTRIES = 5_000
 _MAX_VALUE_BYTES = 128 * 1024  # 128 KB max cached response size
 
@@ -43,14 +43,20 @@ class CachedResult:
         }
 
 
-def _make_cache_key(model_id: str, messages: list[dict[str, Any]], temperature: float, max_tokens: int) -> str:
+def _make_cache_key(
+    model_id: str, messages: list[dict[str, Any]], temperature: float, max_tokens: int
+) -> str:
     """SHA-256 of canonical request parameters."""
-    canon = json.dumps({
-        "model": model_id,
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens,
-    }, sort_keys=True, ensure_ascii=False)
+    canon = json.dumps(
+        {
+            "model": model_id,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+    )
     return hashlib.sha256(canon.encode()).hexdigest()
 
 
@@ -145,7 +151,6 @@ class InferenceResultCache:
         count = len(self._cache)
         self._cache.clear()
         return count
-
 
 
 INFERENCE_RESULT_CACHE = InferenceResultCache(

@@ -3,6 +3,7 @@ Cluster snapshot export: periodically writes a full cluster state snapshot
 to ~/.exo/snapshots/{timestamp}.json for offline debugging and audit.
 Keeps only the last N snapshots (default 24 — one per hour if run hourly).
 """
+
 from __future__ import annotations
 
 import json
@@ -70,7 +71,9 @@ class ClusterSnapshotManager:
         return filename
 
     def _rotate(self) -> None:
-        snapshots = sorted(_SNAPSHOT_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        snapshots = sorted(
+            _SNAPSHOT_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
         for old in snapshots[_MAX_SNAPSHOTS:]:
             try:
                 old.unlink()
@@ -78,16 +81,20 @@ class ClusterSnapshotManager:
                 logger.debug(f"ClusterSnapshot rotate failed: {exc}")
 
     def list_snapshots(self) -> list[dict[str, Any]]:
-        snapshots = sorted(_SNAPSHOT_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        snapshots = sorted(
+            _SNAPSHOT_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
         result = []
         for p in snapshots[:_MAX_SNAPSHOTS]:
             try:
                 data = json.loads(p.read_text())
-                result.append({
-                    "filename": p.name,
-                    "timestamp": data.get("timestamp", 0),
-                    "node_id": data.get("node_id", ""),
-                })
+                result.append(
+                    {
+                        "filename": p.name,
+                        "timestamp": data.get("timestamp", 0),
+                        "node_id": data.get("node_id", ""),
+                    }
+                )
             except Exception as exc:
                 logger.debug(f"ClusterSnapshot list skip {p.name}: {exc}")
         return result

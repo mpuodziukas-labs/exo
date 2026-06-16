@@ -9,15 +9,15 @@ from loguru import logger
 
 
 class CircuitState(str, Enum):
-    CLOSED = "closed"       # normal: requests flow through
-    OPEN = "open"           # tripped: requests rejected
-    HALF_OPEN = "half_open" # testing: one probe request allowed
+    CLOSED = "closed"  # normal: requests flow through
+    OPEN = "open"  # tripped: requests rejected
+    HALF_OPEN = "half_open"  # testing: one probe request allowed
 
 
-_FAILURE_THRESHOLD = 5      # failures to trip
-_FAILURE_WINDOW = 60.0      # seconds
-_RECOVERY_TIMEOUT = 30.0    # seconds before HALF_OPEN
-_SUCCESS_THRESHOLD = 2      # successes in HALF_OPEN to close
+_FAILURE_THRESHOLD = 5  # failures to trip
+_FAILURE_WINDOW = 60.0  # seconds
+_RECOVERY_TIMEOUT = 30.0  # seconds before HALF_OPEN
+_SUCCESS_THRESHOLD = 2  # successes in HALF_OPEN to close
 
 
 @dataclass
@@ -38,12 +38,18 @@ class ModelCircuit:
         self._prune_failures()
         self.failure_timestamps.append(time.monotonic())
         self.success_streak = 0
-        if self.state == CircuitState.HALF_OPEN or len(self.failure_timestamps) >= _FAILURE_THRESHOLD:
+        if (
+            self.state == CircuitState.HALF_OPEN
+            or len(self.failure_timestamps) >= _FAILURE_THRESHOLD
+        ):
             self._trip()
 
     def record_success(self) -> None:
         self.success_streak += 1
-        if self.state == CircuitState.HALF_OPEN and self.success_streak >= _SUCCESS_THRESHOLD:
+        if (
+            self.state == CircuitState.HALF_OPEN
+            and self.success_streak >= _SUCCESS_THRESHOLD
+        ):
             self._close()
 
     def _trip(self) -> None:
@@ -66,7 +72,10 @@ class ModelCircuit:
         if self.state == CircuitState.CLOSED:
             return True
         if self.state == CircuitState.OPEN:
-            if self.tripped_at is not None and time.monotonic() - self.tripped_at >= _RECOVERY_TIMEOUT:
+            if (
+                self.tripped_at is not None
+                and time.monotonic() - self.tripped_at >= _RECOVERY_TIMEOUT
+            ):
                 self.state = CircuitState.HALF_OPEN
                 logger.info(f"ModelCircuitBreaker HALF_OPEN model={self.model_id}")
                 return True  # allow probe
@@ -122,14 +131,20 @@ class ModelCircuitBreakerRegistry:
         return [c.to_dict() for c in self._circuits.values()]
 
     def open_circuits(self) -> list[str]:
-        return [model_id for model_id, c in self._circuits.items() if c.state == CircuitState.OPEN]
+        return [
+            model_id
+            for model_id, c in self._circuits.items()
+            if c.state == CircuitState.OPEN
+        ]
 
     def stats(self) -> dict[str, Any]:
         circuits = list(self._circuits.values())
         return {
             "total_models": len(circuits),
             "open_count": sum(1 for c in circuits if c.state == CircuitState.OPEN),
-            "half_open_count": sum(1 for c in circuits if c.state == CircuitState.HALF_OPEN),
+            "half_open_count": sum(
+                1 for c in circuits if c.state == CircuitState.HALF_OPEN
+            ),
             "total_trips": sum(c.total_trips for c in circuits),
             "total_rejected": sum(c.total_rejected for c in circuits),
         }

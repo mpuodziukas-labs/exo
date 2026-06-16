@@ -26,7 +26,7 @@ class NodeLinkStats:
     def add_sample(self, sample: LinkSample) -> None:
         self.samples.append(sample)
         if len(self.samples) > self._max_samples:
-            self.samples = self.samples[-self._max_samples:]
+            self.samples = self.samples[-self._max_samples :]
 
     @property
     def p50_latency_ms(self) -> float:
@@ -47,7 +47,11 @@ class NodeLinkStats:
         if len(self.samples) < 2:
             return 0.0
         total_bytes = sum(s.bytes_sent + s.bytes_recv for s in self.samples[-10:])
-        elapsed = self.samples[-1].timestamp - self.samples[-10].timestamp if len(self.samples) >= 10 else 1.0
+        elapsed = (
+            self.samples[-1].timestamp - self.samples[-10].timestamp
+            if len(self.samples) >= 10
+            else 1.0
+        )
         return (total_bytes / max(elapsed, 0.001)) / (1024 * 1024) * 8  # Mbps
 
     @property
@@ -138,7 +142,9 @@ class LinkHealthMonitor:
                 self._bytes_counters[node_id] = (0, 0)  # reset interval counters
 
                 if latency_ms > 50.0:
-                    logger.warning(f"Link health: node={node_id} latency={latency_ms:.1f}ms (degraded)")
+                    logger.warning(
+                        f"Link health: node={node_id} latency={latency_ms:.1f}ms (degraded)"
+                    )
 
             await asyncio.sleep(self._probe_interval)
 
@@ -159,19 +165,25 @@ class LinkHealthMonitor:
             "# TYPE exo_link_latency_p50_ms gauge",
         ]
         for node_id, stats in self._stats.items():
-            lines.append(f'exo_link_latency_p50_ms{{node="{node_id}"}} {stats.p50_latency_ms:.3f}')
+            lines.append(
+                f'exo_link_latency_p50_ms{{node="{node_id}"}} {stats.p50_latency_ms:.3f}'
+            )
         lines += [
             "# HELP exo_link_latency_p99_ms P99 round-trip latency per node (ms)",
             "# TYPE exo_link_latency_p99_ms gauge",
         ]
         for node_id, stats in self._stats.items():
-            lines.append(f'exo_link_latency_p99_ms{{node="{node_id}"}} {stats.p99_latency_ms:.3f}')
+            lines.append(
+                f'exo_link_latency_p99_ms{{node="{node_id}"}} {stats.p99_latency_ms:.3f}'
+            )
         lines += [
             "# HELP exo_link_throughput_mbps Average throughput per node (Mbps)",
             "# TYPE exo_link_throughput_mbps gauge",
         ]
         for node_id, stats in self._stats.items():
-            lines.append(f'exo_link_throughput_mbps{{node="{node_id}"}} {stats.avg_throughput_mbps:.2f}')
+            lines.append(
+                f'exo_link_throughput_mbps{{node="{node_id}"}} {stats.avg_throughput_mbps:.2f}'
+            )
         return "\n".join(lines) + "\n"
 
 

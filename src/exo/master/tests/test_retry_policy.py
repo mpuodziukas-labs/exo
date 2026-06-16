@@ -43,7 +43,10 @@ def _mgr(
 def test_timeout_error_never_retried() -> None:
     """An error_type containing 'timeout' is immediately rejected."""
     mgr = _mgr(max_attempts=5)
-    assert mgr.should_retry("t1", status_code=503, error_type="connection_timeout") is False
+    assert (
+        mgr.should_retry("t1", status_code=503, error_type="connection_timeout")
+        is False
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -56,10 +59,10 @@ def test_stop_after_max_attempts() -> None:
     mgr = _mgr(max_attempts=2)
     tid = "t-max"
     assert mgr.should_retry(tid, status_code=503, error_type="") is True
-    mgr.record_attempt(tid, 503, None)   # attempt 1
+    mgr.record_attempt(tid, 503, None)  # attempt 1
 
     assert mgr.should_retry(tid, status_code=503, error_type="") is True
-    mgr.record_attempt(tid, 503, None)   # attempt 2
+    mgr.record_attempt(tid, 503, None)  # attempt 2
 
     assert mgr.should_retry(tid, status_code=503, error_type="") is False
 
@@ -91,7 +94,12 @@ def test_non_retryable_statuses_are_rejected(status: int) -> None:
 def test_429_quota_keyword_stops_retry() -> None:
     """429 with a quota-exceeded keyword in error_type is not retried."""
     mgr = _mgr()
-    assert mgr.should_retry("t-quota", status_code=429, error_type="daily token quota exceeded") is False
+    assert (
+        mgr.should_retry(
+            "t-quota", status_code=429, error_type="daily token quota exceeded"
+        )
+        is False
+    )
 
 
 def test_429_without_quota_keyword_retries() -> None:
@@ -108,7 +116,10 @@ def test_429_without_quota_keyword_retries() -> None:
 def test_none_status_retries_when_not_timeout() -> None:
     """A None status code without 'timeout' in error_type is retried."""
     mgr = _mgr()
-    assert mgr.should_retry("t-net", status_code=None, error_type="connection_reset") is True
+    assert (
+        mgr.should_retry("t-net", status_code=None, error_type="connection_reset")
+        is True
+    )
 
 
 # ---------------------------------------------------------------------------

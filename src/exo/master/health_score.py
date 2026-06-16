@@ -34,16 +34,16 @@ from exo.master.slo_tracker import SLO_TRACKER
 # ---------------------------------------------------------------------------
 # Configuration knobs (override via env if needed)
 # ---------------------------------------------------------------------------
-_SCORE_INTERVAL_S: float = 15.0   # how often compute() is called in the loop
-_HISTORY_MAXLEN: int = 100         # HealthReport ring-buffer depth
+_SCORE_INTERVAL_S: float = 15.0  # how often compute() is called in the loop
+_HISTORY_MAXLEN: int = 100  # HealthReport ring-buffer depth
 
 # TTFT SLO breakpoints (ms)
 _TTFT_PERFECT_MS: float = 300.0
 _TTFT_ZERO_MS: float = 2_000.0
 
 # Error-rate breakpoints
-_ERR_PERFECT: float = 0.01   # below this → 100
-_ERR_ZERO: float = 0.10      # above this → 0
+_ERR_PERFECT: float = 0.01  # below this → 100
+_ERR_ZERO: float = 0.10  # above this → 0
 
 # Queue depth breakpoints
 _QUEUE_PERFECT: int = 10
@@ -52,19 +52,20 @@ _QUEUE_ZERO: int = 100
 # Alert thresholds
 _WARN_THRESHOLD: float = 75.0
 _CRITICAL_THRESHOLD: float = 50.0
-_DEGRADE_THRESHOLD: float = 60.0   # factor score below this → degraded
+_DEGRADE_THRESHOLD: float = 60.0  # factor score below this → degraded
 
 
 # ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class HealthFactor:
     name: str
-    score: float       # 0-100
-    weight: float      # contribution weight (all weights sum to 1.0)
-    detail: str        # human-readable explanation
+    score: float  # 0-100
+    weight: float  # contribution weight (all weights sum to 1.0)
+    detail: str  # human-readable explanation
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,7 @@ class HealthReport:
 # ---------------------------------------------------------------------------
 # Helper: linear interpolation clamp
 # ---------------------------------------------------------------------------
+
 
 def _lerp_score(value: float, perfect: float, zero: float) -> float:
     """Return 100 when value ≤ perfect, 0 when value ≥ zero, linear in between."""
@@ -104,6 +106,7 @@ def _assign_grade(score: float) -> Literal["A", "B", "C", "D", "F"]:
 # ---------------------------------------------------------------------------
 # Core scorer
 # ---------------------------------------------------------------------------
+
 
 class ClusterHealthScorer:
     """
@@ -131,8 +134,14 @@ class ClusterHealthScorer:
                 weight=0.25,
                 detail="no breakers registered",
             )
-        open_ids = [s["worker_id"] for s in all_states if s["state"] == CircuitState.OPEN.value]
-        half_ids = [s["worker_id"] for s in all_states if s["state"] == CircuitState.HALF_OPEN.value]
+        open_ids = [
+            s["worker_id"] for s in all_states if s["state"] == CircuitState.OPEN.value
+        ]
+        half_ids = [
+            s["worker_id"]
+            for s in all_states
+            if s["state"] == CircuitState.HALF_OPEN.value
+        ]
         if open_ids:
             score = 0.0
             detail = f"OPEN: {', '.join(open_ids)}"
@@ -142,7 +151,9 @@ class ClusterHealthScorer:
         else:
             score = 100.0
             detail = f"all {len(all_states)} breaker(s) CLOSED"
-        return HealthFactor(name="circuit_breakers", score=score, weight=0.25, detail=detail)
+        return HealthFactor(
+            name="circuit_breakers", score=score, weight=0.25, detail=detail
+        )
 
     def _score_memory_pressure(self) -> HealthFactor:
         pressure = MEMORY_MONITOR.current_pressure  # 0.0-1.0
@@ -298,7 +309,9 @@ class ClusterHealthScorer:
 
     async def run_score_loop(self) -> None:
         """Run compute() every ``_SCORE_INTERVAL_S`` seconds indefinitely."""
-        logger.info(f"[health_score] score loop started (interval={_SCORE_INTERVAL_S}s)")
+        logger.info(
+            f"[health_score] score loop started (interval={_SCORE_INTERVAL_S}s)"
+        )
         while True:
             try:
                 self.compute()

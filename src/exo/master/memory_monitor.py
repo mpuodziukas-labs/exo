@@ -54,6 +54,7 @@ class MemoryPressureMonitor:
     def sample(self) -> MemorySnapshot:
         try:
             import psutil
+
             vm = psutil.virtual_memory()
             sw = psutil.swap_memory()
             snap = MemorySnapshot(
@@ -86,20 +87,21 @@ class MemoryPressureMonitor:
                 )
             elif snap.ram_pressure > self.WARNING_THRESHOLD:
                 self._warning_count += 1
-                logger.warning(
-                    f"Memory WARNING: {snap.ram_pressure:.1%} RAM used"
-                )
+                logger.warning(f"Memory WARNING: {snap.ram_pressure:.1%} RAM used")
         return snap
 
     def _sample_macos(self) -> MemorySnapshot:
         """macOS fallback using sysctl without psutil."""
         import subprocess
+
         total_gb = 0.0
         used_gb = 0.0
         try:
             result = subprocess.run(
                 ["sysctl", "-n", "hw.memsize"],
-                capture_output=True, text=True, timeout=2
+                capture_output=True,
+                text=True,
+                timeout=2,
             )
             total_gb = int(result.stdout.strip()) / 1e9
             # vm_stat for page counts

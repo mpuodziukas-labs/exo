@@ -42,7 +42,19 @@ class _Gauge:
 
 @dataclass
 class _Histogram:
-    buckets: tuple[float, ...] = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+    buckets: tuple[float, ...] = (
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1.0,
+        2.5,
+        5.0,
+        10.0,
+    )
     _counts: dict[float, int] = field(default_factory=dict)
     _sum: float = 0.0
     _total: int = 0
@@ -74,22 +86,26 @@ class Metrics:
         self.world_size = _Gauge()
         self.errors_total = _Counter()
         # SLO / alerting gauges
-        self.memory_pressure_ratio = _Gauge()          # 0.0-1.0 RAM pressure (mirrors MemoryPressureMonitor)
-        self.circuit_breaker_open = _Gauge()           # 1 if any circuit breaker is OPEN, else 0
-        self.priority_queue_depth = _Gauge()           # current number of waiting requests
-        self.rate_limit_rejected_total = _Counter()    # cumulative requests rejected by rate limiter
+        self.memory_pressure_ratio = (
+            _Gauge()
+        )  # 0.0-1.0 RAM pressure (mirrors MemoryPressureMonitor)
+        self.circuit_breaker_open = _Gauge()  # 1 if any circuit breaker is OPEN, else 0
+        self.priority_queue_depth = _Gauge()  # current number of waiting requests
+        self.rate_limit_rejected_total = (
+            _Counter()
+        )  # cumulative requests rejected by rate limiter
         # Latency percentiles (milliseconds) — updated by inference pipeline
-        self.inference_latency_p50_ms = _Gauge()       # rolling p50 latency in ms
-        self.inference_latency_p99_ms = _Gauge()       # rolling p99 latency in ms
+        self.inference_latency_p50_ms = _Gauge()  # rolling p50 latency in ms
+        self.inference_latency_p99_ms = _Gauge()  # rolling p99 latency in ms
         # Load shedding counter (mirrors SheddingController for convenience)
-        self.load_shed_total = _Counter()              # cumulative requests shed
+        self.load_shed_total = _Counter()  # cumulative requests shed
         # KV cache hit rate (0.0-1.0) — updated by prefix cache / KV tier
-        self.kv_cache_hit_rate = _Gauge()              # fraction of KV lookups that hit
+        self.kv_cache_hit_rate = _Gauge()  # fraction of KV lookups that hit
         # Memory pressure alias (same semantics as memory_pressure_ratio, without _ratio suffix)
-        self.memory_pressure = _Gauge()                # 0.0-1.0 RAM pressure
+        self.memory_pressure = _Gauge()  # 0.0-1.0 RAM pressure
         # Error budget and SLO
-        self.error_budget_remaining_pct = _Gauge()     # % of error budget not yet consumed
-        self.slo_violation_rate = _Gauge()             # aggregate SLO violation rate
+        self.error_budget_remaining_pct = _Gauge()  # % of error budget not yet consumed
+        self.slo_violation_rate = _Gauge()  # aggregate SLO violation rate
         self._start_time = time.time()
 
     def render(self) -> str:
@@ -110,7 +126,9 @@ class Metrics:
 
         lines.append("# HELP exo_tokens_generated_total Total tokens generated")
         lines.append("# TYPE exo_tokens_generated_total counter")
-        lines.append(f"exo_tokens_generated_total {self.tokens_generated_total.get():.0f}")
+        lines.append(
+            f"exo_tokens_generated_total {self.tokens_generated_total.get():.0f}"
+        )
 
         lines.append("# HELP exo_tokens_per_second Current token generation rate")
         lines.append("# TYPE exo_tokens_per_second gauge")
@@ -124,31 +142,55 @@ class Metrics:
         lines.append("# TYPE exo_errors_total counter")
         lines.append(f"exo_errors_total {self.errors_total.get():.0f}")
 
-        lines.append("# HELP exo_memory_pressure_ratio Current RAM pressure ratio (0.0-1.0)")
+        lines.append(
+            "# HELP exo_memory_pressure_ratio Current RAM pressure ratio (0.0-1.0)"
+        )
         lines.append("# TYPE exo_memory_pressure_ratio gauge")
-        lines.append(f"exo_memory_pressure_ratio {self.memory_pressure_ratio.get():.4f}")
+        lines.append(
+            f"exo_memory_pressure_ratio {self.memory_pressure_ratio.get():.4f}"
+        )
 
-        lines.append("# HELP exo_circuit_breaker_open 1 if circuit breaker is OPEN per model, else 0")
+        lines.append(
+            "# HELP exo_circuit_breaker_open 1 if circuit breaker is OPEN per model, else 0"
+        )
         lines.append("# TYPE exo_circuit_breaker_open gauge")
-        lines.append(f'exo_circuit_breaker_open{{model="default"}} {self.circuit_breaker_open.get():.0f}')
+        lines.append(
+            f'exo_circuit_breaker_open{{model="default"}} {self.circuit_breaker_open.get():.0f}'
+        )
 
-        lines.append("# HELP exo_priority_queue_depth Current number of requests waiting in the priority queue")
+        lines.append(
+            "# HELP exo_priority_queue_depth Current number of requests waiting in the priority queue"
+        )
         lines.append("# TYPE exo_priority_queue_depth gauge")
         lines.append(f"exo_priority_queue_depth {self.priority_queue_depth.get():.0f}")
 
-        lines.append("# HELP exo_rate_limit_rejected_total Cumulative requests rejected by the rate limiter")
+        lines.append(
+            "# HELP exo_rate_limit_rejected_total Cumulative requests rejected by the rate limiter"
+        )
         lines.append("# TYPE exo_rate_limit_rejected_total counter")
-        lines.append(f"exo_rate_limit_rejected_total {self.rate_limit_rejected_total.get():.0f}")
+        lines.append(
+            f"exo_rate_limit_rejected_total {self.rate_limit_rejected_total.get():.0f}"
+        )
 
-        lines.append("# HELP exo_inference_latency_p50_ms Rolling p50 inference latency in milliseconds")
+        lines.append(
+            "# HELP exo_inference_latency_p50_ms Rolling p50 inference latency in milliseconds"
+        )
         lines.append("# TYPE exo_inference_latency_p50_ms gauge")
-        lines.append(f"exo_inference_latency_p50_ms {self.inference_latency_p50_ms.get():.3f}")
+        lines.append(
+            f"exo_inference_latency_p50_ms {self.inference_latency_p50_ms.get():.3f}"
+        )
 
-        lines.append("# HELP exo_inference_latency_p99_ms Rolling p99 inference latency in milliseconds")
+        lines.append(
+            "# HELP exo_inference_latency_p99_ms Rolling p99 inference latency in milliseconds"
+        )
         lines.append("# TYPE exo_inference_latency_p99_ms gauge")
-        lines.append(f"exo_inference_latency_p99_ms {self.inference_latency_p99_ms.get():.3f}")
+        lines.append(
+            f"exo_inference_latency_p99_ms {self.inference_latency_p99_ms.get():.3f}"
+        )
 
-        lines.append("# HELP exo_load_shed_total Cumulative requests shed due to overload")
+        lines.append(
+            "# HELP exo_load_shed_total Cumulative requests shed due to overload"
+        )
         lines.append("# TYPE exo_load_shed_total counter")
         lines.append(f"exo_load_shed_total {self.load_shed_total.get():.0f}")
 
@@ -160,11 +202,17 @@ class Metrics:
         lines.append("# TYPE exo_memory_pressure gauge")
         lines.append(f"exo_memory_pressure {self.memory_pressure.get():.4f}")
 
-        lines.append("# HELP exo_error_budget_remaining_pct Percentage of error budget not yet consumed")
+        lines.append(
+            "# HELP exo_error_budget_remaining_pct Percentage of error budget not yet consumed"
+        )
         lines.append("# TYPE exo_error_budget_remaining_pct gauge")
-        lines.append(f"exo_error_budget_remaining_pct {self.error_budget_remaining_pct.get():.4f}")
+        lines.append(
+            f"exo_error_budget_remaining_pct {self.error_budget_remaining_pct.get():.4f}"
+        )
 
-        lines.append("# HELP exo_slo_violation_rate Aggregate SLO violation rate (0.0-1.0)")
+        lines.append(
+            "# HELP exo_slo_violation_rate Aggregate SLO violation rate (0.0-1.0)"
+        )
         lines.append("# TYPE exo_slo_violation_rate gauge")
         lines.append(f"exo_slo_violation_rate {self.slo_violation_rate.get():.4f}")
 
@@ -172,7 +220,9 @@ class Metrics:
         lines.append("# HELP exo_request_duration_seconds Inference request duration")
         lines.append("# TYPE exo_request_duration_seconds histogram")
         for bucket, count in sorted(counts.items()):
-            lines.append(f'exo_request_duration_seconds_bucket{{le="{bucket}"}} {count}')
+            lines.append(
+                f'exo_request_duration_seconds_bucket{{le="{bucket}"}} {count}'
+            )
         lines.append(f'exo_request_duration_seconds_bucket{{le="+Inf"}} {htotal}')
         lines.append(f"exo_request_duration_seconds_sum {hsum:.6f}")
         lines.append(f"exo_request_duration_seconds_count {htotal}")

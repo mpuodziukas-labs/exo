@@ -3,6 +3,7 @@ Inference queue drain on shutdown: when SIGTERM is received, waits for all
 in-flight inference requests to complete before stopping. Tracks active
 request lifecycle (started/finished) so the drain loop knows when to exit.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -37,7 +38,9 @@ class QueueDrainManager:
         self._draining = False
 
     def register(self, request_id: str, model_id: str) -> None:
-        self._inflight[request_id] = InFlightRequest(request_id=request_id, model_id=model_id)
+        self._inflight[request_id] = InFlightRequest(
+            request_id=request_id, model_id=model_id
+        )
 
     def complete(self, request_id: str) -> None:
         self._inflight.pop(request_id, None)
@@ -57,7 +60,9 @@ class QueueDrainManager:
         """
         self._draining = True
         deadline = time.monotonic() + timeout
-        logger.info(f"QueueDrain: waiting for {len(self._inflight)} in-flight requests (max {timeout}s)")
+        logger.info(
+            f"QueueDrain: waiting for {len(self._inflight)} in-flight requests (max {timeout}s)"
+        )
 
         while self._inflight and time.monotonic() < deadline:
             await asyncio.sleep(0.25)

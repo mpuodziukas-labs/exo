@@ -10,6 +10,7 @@ Focuses on:
 - ErrorBudgetManager multi-endpoint isolation
 - Rolling window trimming (time-based cutoff)
 """
+
 from __future__ import annotations
 
 import time

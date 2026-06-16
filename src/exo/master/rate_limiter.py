@@ -111,8 +111,7 @@ class RateLimiter:
             else:
                 self._rejected_total += 1
                 logger.warning(
-                    f"Rate limit exceeded: client={client_id} "
-                    f"retry_after={wait:.1f}s"
+                    f"Rate limit exceeded: client={client_id} retry_after={wait:.1f}s"
                 )
 
         return allowed, wait

@@ -3,6 +3,7 @@ Inference anomaly detector: detects statistical anomalies in inference metrics
 (TTFT, TPS, error rate) using Z-score against rolling baseline.
 Fires SSE events and log warnings when anomalies are detected.
 """
+
 from __future__ import annotations
 
 import math
@@ -13,9 +14,9 @@ from typing import Any
 
 from loguru import logger
 
-_WINDOW = 50        # rolling window size
+_WINDOW = 50  # rolling window size
 _Z_THRESHOLD = 3.0  # Z-score threshold for anomaly
-_MIN_SAMPLES = 10   # need at least this many samples before detecting
+_MIN_SAMPLES = 10  # need at least this many samples before detecting
 
 
 @dataclass
@@ -53,8 +54,11 @@ class MetricTracker:
                 z = abs(value - mean) / std
                 if z > _Z_THRESHOLD:
                     event = AnomalyEvent(
-                        metric=self.name, value=value,
-                        z_score=z, baseline_mean=mean, baseline_std=std,
+                        metric=self.name,
+                        value=value,
+                        z_score=z,
+                        baseline_mean=mean,
+                        baseline_std=std,
                     )
                     logger.warning(
                         f"Anomaly: metric={self.name} value={value:.3f} "

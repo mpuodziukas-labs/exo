@@ -3,6 +3,7 @@ Node capability negotiation: when assigning a model shard to a node, verifies
 the node has sufficient capabilities (RAM, FLOPS, MLX version, features).
 Returns negotiation result explaining why a node was accepted or rejected.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -12,16 +13,16 @@ from loguru import logger
 
 # Minimum requirements per model size tier (rough heuristics)
 _MIN_RAM_GB_FOR_TIER: dict[str, float] = {
-    "small":  4.0,   # < 4B params
-    "medium": 8.0,   # 4-13B params
-    "large":  16.0,  # 13-70B params
+    "small": 4.0,  # < 4B params
+    "medium": 8.0,  # 4-13B params
+    "large": 16.0,  # 13-70B params
     "xlarge": 48.0,  # 70B+ params
 }
 
 _MIN_TFLOPS_FOR_TIER: dict[str, float] = {
-    "small":  1.0,
+    "small": 1.0,
     "medium": 5.0,
-    "large":  10.0,
+    "large": 10.0,
     "xlarge": 20.0,
 }
 
@@ -81,32 +82,36 @@ class CapabilityNegotiator:
         profile = self._profiles.get(node_id)
         if profile is None:
             return NegotiationResult(
-                node_id=node_id, model_tier=model_tier,
-                accepted=False, reason="node not registered"
+                node_id=node_id,
+                model_tier=model_tier,
+                accepted=False,
+                reason="node not registered",
             )
         min_ram = _MIN_RAM_GB_FOR_TIER.get(model_tier, 8.0)
         min_tflops = _MIN_TFLOPS_FOR_TIER.get(model_tier, 5.0)
         if profile.ram_gb < min_ram:
             return NegotiationResult(
-                node_id=node_id, model_tier=model_tier,
+                node_id=node_id,
+                model_tier=model_tier,
                 accepted=False,
-                reason=f"insufficient RAM: {profile.ram_gb}GB < {min_ram}GB required"
+                reason=f"insufficient RAM: {profile.ram_gb}GB < {min_ram}GB required",
             )
         if profile.tflops < min_tflops:
             return NegotiationResult(
-                node_id=node_id, model_tier=model_tier,
+                node_id=node_id,
+                model_tier=model_tier,
                 accepted=False,
-                reason=f"insufficient FLOPS: {profile.tflops}T < {min_tflops}T required"
+                reason=f"insufficient FLOPS: {profile.tflops}T < {min_tflops}T required",
             )
         return NegotiationResult(
-            node_id=node_id, model_tier=model_tier,
-            accepted=True, reason="capable"
+            node_id=node_id, model_tier=model_tier, accepted=True, reason="capable"
         )
 
     def best_node(self, model_tier: str) -> str | None:
         """Returns node_id of highest-RAM node that passes negotiation."""
         candidates = [
-            p for p in self._profiles.values()
+            p
+            for p in self._profiles.values()
             if self.negotiate(p.node_id, model_tier).accepted
         ]
         if not candidates:

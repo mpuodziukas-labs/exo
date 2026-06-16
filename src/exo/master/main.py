@@ -366,7 +366,9 @@ class Master:
                             error_message=str(e),
                         )
                         await self.event_sender.send(
-                            ChunkGenerated(command_id=command.command_id, chunk=error_chunk)
+                            ChunkGenerated(
+                                command_id=command.command_id, chunk=error_chunk
+                            )
                         )
 
     # These plan loops are the cracks showing in our event sourcing architecture - more things could be commands

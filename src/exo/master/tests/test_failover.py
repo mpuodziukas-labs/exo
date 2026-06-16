@@ -40,7 +40,9 @@ def _fresh() -> FailoverCoordinator:
 # ---------------------------------------------------------------------------
 
 
-def test_trigger_creates_event_and_increments_total(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_trigger_creates_event_and_increments_total(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """trigger() creates a FailoverEvent and increments _total_failovers."""
     fake_hb = MagicMock()
     fake_hb.evicted_nodes.return_value = set()
@@ -110,7 +112,9 @@ def test_complete_with_unknown_task_is_noop(monkeypatch: pytest.MonkeyPatch) -> 
     assert coord.stats()["successful"] == 0
 
 
-def test_complete_failure_does_not_increment_successful(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_complete_failure_does_not_increment_successful(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """A failed failover (success=False) does not count as successful."""
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", MagicMock())
     monkeypatch.setattr("exo.master.failover.emit_cluster_event", MagicMock())
@@ -142,7 +146,9 @@ def test_select_failover_node_returns_none_when_no_alive_nodes(
     assert result is None
 
 
-def test_select_failover_node_excludes_failed_node(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_select_failover_node_excludes_failed_node(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The failed node itself is never selected as failover target."""
     fake_hb = MagicMock()
     fake_hb.alive_nodes.return_value = ["dead-node", "node-b"]
@@ -157,7 +163,9 @@ def test_select_failover_node_excludes_failed_node(monkeypatch: pytest.MonkeyPat
     assert result == "node-b"
 
 
-def test_select_failover_node_prefers_healthy_over_open(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_select_failover_node_prefers_healthy_over_open(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Nodes with CLOSED circuit breakers are preferred over OPEN ones."""
     fake_hb = MagicMock()
     fake_hb.alive_nodes.return_value = ["node-open", "node-closed"]
@@ -188,7 +196,9 @@ def test_should_failover_true_when_cb_open(monkeypatch: pytest.MonkeyPatch) -> N
     assert coord.should_failover("dying-node") is True
 
 
-def test_should_failover_true_when_heartbeat_evicted(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_should_failover_true_when_heartbeat_evicted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """should_failover returns True if heartbeat has evicted the node."""
     fake_hb = MagicMock()
     fake_hb.evicted_nodes.return_value = {"hb-node"}

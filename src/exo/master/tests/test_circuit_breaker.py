@@ -68,12 +68,12 @@ def test_success_resets_failure_count() -> None:
     cb = _make_cb(failure_threshold=3)
     cb.record_failure()
     cb.record_failure()
-    cb.record_success()        # resets failure_count
-    cb.record_failure()        # starts from 1 again
-    cb.record_failure()        # 2 — still closed
+    cb.record_success()  # resets failure_count
+    cb.record_failure()  # starts from 1 again
+    cb.record_failure()  # 2 — still closed
     assert cb.state == CircuitState.CLOSED
 
-    cb.record_failure()        # 3 — trips now
+    cb.record_failure()  # 3 — trips now
     assert cb.state == CircuitState.OPEN
 
 
@@ -131,7 +131,7 @@ def test_half_open_reopens_on_failure() -> None:
     cb.record_failure()  # → OPEN
     cb.last_failure_time = 0.0
 
-    cb.allow_request()   # → HALF_OPEN
+    cb.allow_request()  # → HALF_OPEN
     cb.record_failure()  # → OPEN again
     assert cb.state == CircuitState.OPEN
 

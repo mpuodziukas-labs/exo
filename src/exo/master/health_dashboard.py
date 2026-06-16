@@ -4,6 +4,7 @@ health_dashboard.py — live HTML dashboard for the exo distributed inference cl
 render_dashboard(data)  -> complete HTML string (self-contained, no CDN)
 generate_dashboard_data(...) -> collect all subsystem data into one dict
 """
+
 from __future__ import annotations
 
 import time
@@ -19,31 +20,41 @@ if TYPE_CHECKING:
 
 # ── colour helpers ────────────────────────────────────────────────────────────
 _C = {
-    "green":  "#3fb950",
+    "green": "#3fb950",
     "yellow": "#d29922",
-    "red":    "#f85149",
-    "blue":   "#58a6ff",
-    "text":   "#c9d1d9",
-    "dim":    "#8b949e",
-    "bg":     "#0d1117",
-    "card":   "#161b22",
+    "red": "#f85149",
+    "blue": "#58a6ff",
+    "text": "#c9d1d9",
+    "dim": "#8b949e",
+    "bg": "#0d1117",
+    "card": "#161b22",
     "border": "#30363d",
 }
 
 
 def _state_color(state: str) -> str:
-    return {"closed": _C["green"], "half_open": _C["yellow"], "open": _C["red"]}.get(state, _C["dim"])
+    return {"closed": _C["green"], "half_open": _C["yellow"], "open": _C["red"]}.get(
+        state, _C["dim"]
+    )
 
 
 def _link_color(status: str) -> str:
-    return {"healthy": _C["green"], "warning": _C["yellow"], "degraded": _C["red"]}.get(status, _C["dim"])
+    return {"healthy": _C["green"], "warning": _C["yellow"], "degraded": _C["red"]}.get(
+        status, _C["dim"]
+    )
 
 
 def _mem_color(level: str) -> str:
-    return {"ok": _C["green"], "warning": _C["yellow"], "critical": _C["red"], "fatal": _C["red"]}.get(level, _C["dim"])
+    return {
+        "ok": _C["green"],
+        "warning": _C["yellow"],
+        "critical": _C["red"],
+        "fatal": _C["red"],
+    }.get(level, _C["dim"])
 
 
 # ── sub-section renderers ─────────────────────────────────────────────────────
+
 
 def _card(title: str, body: str) -> str:
     return f"""
@@ -68,6 +79,7 @@ def _table(headers: list[str], rows: list[list[str]]) -> str:
 
 # ── section builders ──────────────────────────────────────────────────────────
 
+
 def _section_cluster(d: dict[str, Any]) -> str:
     c = d.get("cluster", {})
     uptime_s = c.get("uptime_seconds", 0)
@@ -90,7 +102,9 @@ def _section_requests(d: dict[str, Any]) -> str:
         _kv("Requests/sec", rps, _C["blue"])
         + _kv("Active", int(r.get("active", 0)))
         + _kv("Total", int(r.get("total", 0)))
-        + _kv("Errors", int(r.get("errors", 0)), _C["red"] if r.get("errors", 0) else "")
+        + _kv(
+            "Errors", int(r.get("errors", 0)), _C["red"] if r.get("errors", 0) else ""
+        )
         + _kv("p50 latency", f"{r.get('p50_ms', 0.0):.1f} ms")
         + _kv("p99 latency", f"{r.get('p99_ms', 0.0):.1f} ms")
         + _kv("Tokens/sec", round(r.get("tokens_per_second", 0.0), 1))
@@ -108,15 +122,20 @@ def _section_circuit_breakers(d: dict[str, Any]) -> str:
         color = _state_color(state)
         badge = f'<span style="color:{color};font-weight:600">{state.upper()}</span>'
         last_fail = b.get("seconds_in_current_state", 0)
-        rows.append([
-            b.get("worker_id", "?"),
-            badge,
-            str(b.get("failure_count", 0)),
-            str(b.get("total_failures", 0)),
-            f"{b.get('error_rate', 0.0):.1%}",
-            f"{last_fail:.0f}s ago",
-        ])
-    tbl = _table(["Worker", "State", "Fail streak", "Total fails", "Error rate", "In state"], rows)
+        rows.append(
+            [
+                b.get("worker_id", "?"),
+                badge,
+                str(b.get("failure_count", 0)),
+                str(b.get("total_failures", 0)),
+                f"{b.get('error_rate', 0.0):.1%}",
+                f"{last_fail:.0f}s ago",
+            ]
+        )
+    tbl = _table(
+        ["Worker", "State", "Fail streak", "Total fails", "Error rate", "In state"],
+        rows,
+    )
     return _card("Circuit Breakers", tbl)
 
 
@@ -129,15 +148,19 @@ def _section_link_health(d: dict[str, Any]) -> str:
         status = lk.get("status", "unknown")
         color = _link_color(status)
         badge = f'<span style="color:{color};font-weight:600">{status.upper()}</span>'
-        rows.append([
-            lk.get("node_id", "?"),
-            badge,
-            f"{lk.get('p50_latency_ms', 0.0):.1f} ms",
-            f"{lk.get('p99_latency_ms', 0.0):.1f} ms",
-            f"{lk.get('avg_throughput_mbps', 0.0):.2f} Mbps",
-            str(lk.get("sample_count", 0)),
-        ])
-    tbl = _table(["Node", "Status", "p50 lat", "p99 lat", "Throughput", "Samples"], rows)
+        rows.append(
+            [
+                lk.get("node_id", "?"),
+                badge,
+                f"{lk.get('p50_latency_ms', 0.0):.1f} ms",
+                f"{lk.get('p99_latency_ms', 0.0):.1f} ms",
+                f"{lk.get('avg_throughput_mbps', 0.0):.2f} Mbps",
+                str(lk.get("sample_count", 0)),
+            ]
+        )
+    tbl = _table(
+        ["Node", "Status", "p50 lat", "p99 lat", "Throughput", "Samples"], rows
+    )
     return _card("Link Health", tbl)
 
 
@@ -175,7 +198,11 @@ def _section_memory(d: dict[str, Any]) -> str:
         + f'<div class="bar-wrap"><div class="bar" style="width:{bar_pct}%;background:{bar_color}"></div></div>'
         + _kv("Swap used", f"{mem.get('swap_used_gb', 0.0):.1f} GB")
         + _kv("Warnings", mem.get("warning_events", 0))
-        + _kv("Critical events", mem.get("critical_events", 0), _C["red"] if mem.get("critical_events", 0) else "")
+        + _kv(
+            "Critical events",
+            mem.get("critical_events", 0),
+            _C["red"] if mem.get("critical_events", 0) else "",
+        )
     )
     return _card("Memory", body)
 
@@ -187,7 +214,11 @@ def _section_admission(d: dict[str, Any]) -> str:
     body = (
         _kv("Max concurrent", adm.get("max_concurrent", 0))
         + _kv("Admitted total", adm.get("admitted_total", 0), _C["green"])
-        + _kv("Rejected total", adm.get("rejected_total", 0), _C["red"] if adm.get("rejected_total", 0) else "")
+        + _kv(
+            "Rejected total",
+            adm.get("rejected_total", 0),
+            _C["red"] if adm.get("rejected_total", 0) else "",
+        )
         + _kv("Rejection rate", f"{rrate:.1%}", gate_color)
         + _kv("Max queue depth", adm.get("max_queue_depth", 0))
         + _kv("Mem threshold", f"{adm.get('memory_pressure_threshold', 0.0):.0%}")
@@ -203,13 +234,19 @@ def _section_models(d: dict[str, Any]) -> str:
     rows = []
     for m in models:
         loaded_at = m.get("loaded_at", 0)
-        ts = time.strftime("%Y-%m-%d %H:%M", time.localtime(loaded_at)) if loaded_at else "—"
-        rows.append([
-            m.get("model_id", "?"),
-            m.get("version_hash", "—"),
-            ts,
-            m.get("path", "—"),
-        ])
+        ts = (
+            time.strftime("%Y-%m-%d %H:%M", time.localtime(loaded_at))
+            if loaded_at
+            else "—"
+        )
+        rows.append(
+            [
+                m.get("model_id", "?"),
+                m.get("version_hash", "—"),
+                ts,
+                m.get("path", "—"),
+            ]
+        )
     tbl = _table(["Model ID", "Version", "Loaded at", "Path"], rows)
     return _card("Models", tbl)
 
@@ -219,39 +256,39 @@ def _section_models(d: dict[str, Any]) -> str:
 _CSS = f"""
 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 body {{
-  background: {_C['bg']}; color: {_C['text']};
+  background: {_C["bg"]}; color: {_C["text"]};
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
   font-size: 13px; padding: 16px;
 }}
-h1 {{ font-size: 18px; color: {_C['blue']}; margin-bottom: 16px; }}
-h1 span {{ font-size: 12px; color: {_C['dim']}; margin-left: 12px; }}
+h1 {{ font-size: 18px; color: {_C["blue"]}; margin-bottom: 16px; }}
+h1 span {{ font-size: 12px; color: {_C["dim"]}; margin-left: 12px; }}
 .grid {{
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 12px;
 }}
 .card {{
-  background: {_C['card']}; border: 1px solid {_C['border']};
+  background: {_C["card"]}; border: 1px solid {_C["border"]};
   border-radius: 6px; padding: 14px;
 }}
-.card h2 {{ font-size: 13px; color: {_C['dim']}; text-transform: uppercase;
-  letter-spacing: .06em; margin-bottom: 10px; border-bottom: 1px solid {_C['border']}; padding-bottom: 6px; }}
+.card h2 {{ font-size: 13px; color: {_C["dim"]}; text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 10px; border-bottom: 1px solid {_C["border"]}; padding-bottom: 6px; }}
 .kv {{ display: flex; justify-content: space-between; align-items: flex-start;
   padding: 3px 0; }}
-.label {{ color: {_C['dim']}; }}
+.label {{ color: {_C["dim"]}; }}
 .value {{ font-weight: 600; text-align: right; }}
 table {{ width: 100%; border-collapse: collapse; margin-top: 4px; }}
-th {{ text-align: left; color: {_C['dim']}; font-weight: 500;
-  border-bottom: 1px solid {_C['border']}; padding: 4px 6px; }}
-td {{ padding: 4px 6px; border-bottom: 1px solid {_C['border']}; word-break: break-all; }}
+th {{ text-align: left; color: {_C["dim"]}; font-weight: 500;
+  border-bottom: 1px solid {_C["border"]}; padding: 4px 6px; }}
+td {{ padding: 4px 6px; border-bottom: 1px solid {_C["border"]}; word-break: break-all; }}
 tr:last-child td {{ border-bottom: none; }}
-.empty {{ color: {_C['dim']}; font-style: italic; padding: 6px 0; }}
-.bar-wrap {{ background: {_C['border']}; border-radius: 3px; height: 6px;
+.empty {{ color: {_C["dim"]}; font-style: italic; padding: 6px 0; }}
+.bar-wrap {{ background: {_C["border"]}; border-radius: 3px; height: 6px;
   margin: 6px 0; overflow: hidden; }}
 .bar {{ height: 6px; border-radius: 3px; transition: width .4s; }}
 ul.violators {{ list-style: none; text-align: right; }}
-ul.violators li {{ color: {_C['red']}; font-size: 11px; }}
-.footer {{ margin-top: 14px; text-align: right; color: {_C['dim']}; font-size: 11px; }}
+ul.violators li {{ color: {_C["red"]}; font-size: 11px; }}
+.footer {{ margin-top: 14px; text-align: right; color: {_C["dim"]}; font-size: 11px; }}
 """
 
 # ── JS polling (partial update via fetch /dashboard/data) ─────────────────────
@@ -274,19 +311,22 @@ _JS = """
 
 # ── public API ────────────────────────────────────────────────────────────────
 
+
 def render_dashboard(data: dict[str, Any]) -> str:
     """Return a complete self-contained HTML page string."""
     now = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
-    sections = "\n".join([
-        _section_cluster(data),
-        _section_requests(data),
-        _section_circuit_breakers(data),
-        _section_link_health(data),
-        _section_slo(data),
-        _section_memory(data),
-        _section_admission(data),
-        _section_models(data),
-    ])
+    sections = "\n".join(
+        [
+            _section_cluster(data),
+            _section_requests(data),
+            _section_circuit_breakers(data),
+            _section_link_health(data),
+            _section_slo(data),
+            _section_memory(data),
+            _section_admission(data),
+            _section_models(data),
+        ]
+    )
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -330,7 +370,7 @@ def generate_dashboard_data(
     if hist_count:
         avg_s = hist_sum / hist_count
         p50_ms = avg_s * 1000  # rough; real percentile needs sorted samples
-        p99_ms = p50_ms * 3    # placeholder when no per-request SLO data
+        p99_ms = p50_ms * 3  # placeholder when no per-request SLO data
 
     slo_summary = slo_tracker.summary()
     slo_p50 = slo_summary.get("global_p50_ttft_ms", 0.0)
@@ -348,11 +388,15 @@ def generate_dashboard_data(
         "cluster": {
             "world_size": world_size,
             "active_nodes": world_size,
-            "master_node_id": str(getattr(state, "master_node_id", "—")) if state else "—",
+            "master_node_id": str(getattr(state, "master_node_id", "—"))
+            if state
+            else "—",
             "uptime_seconds": round(uptime, 1),
         },
         "requests": {
-            "requests_per_second": round(metrics.tokens_per_second.get() / max(1, 200), 4),
+            "requests_per_second": round(
+                metrics.tokens_per_second.get() / max(1, 200), 4
+            ),
             "active": int(metrics.requests_active.get()),
             "total": int(metrics.requests_total.get()),
             "errors": int(metrics.errors_total.get()),

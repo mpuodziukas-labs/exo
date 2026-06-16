@@ -37,9 +37,9 @@ class HedgeConfig:
 @dataclass
 class HedgeStats:
     total_hedged: int = 0
-    hedge_wins: int = 0       # hedge coroutine responded first
-    primary_wins: int = 0     # primary coroutine responded first
-    cancelled: int = 0        # losing tasks cancelled
+    hedge_wins: int = 0  # hedge coroutine responded first
+    primary_wins: int = 0  # primary coroutine responded first
+    cancelled: int = 0  # losing tasks cancelled
 
 
 class HedgingController:
@@ -150,7 +150,9 @@ class HedgingController:
         if not self._enabled:
             return 0.0
         effective_delay = delay_ms if delay_ms > 0 else self._p95_latency_ms
-        logger.debug(f"[hedging] maybe_hedge trace_id={trace_id!r} delay_ms={effective_delay:.0f}")
+        logger.debug(
+            f"[hedging] maybe_hedge trace_id={trace_id!r} delay_ms={effective_delay:.0f}"
+        )
         return effective_delay
 
     def cancel_hedge(self, trace_id: str) -> None:

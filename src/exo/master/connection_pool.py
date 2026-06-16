@@ -138,7 +138,9 @@ class ConnectionPool:
         with self._lock:
             conns = self._pool.get(node_id)
             if not conns:
-                logger.debug(f"[connection_pool] get_connection: unknown node={node_id}")
+                logger.debug(
+                    f"[connection_pool] get_connection: unknown node={node_id}"
+                )
                 return None
             healthy = [c for c in conns if c.state == "connected"]
             if not healthy:
@@ -189,7 +191,10 @@ class ConnectionPool:
             return
         with self._lock:
             conn.errors += 1
-            if conn.errors > _ERROR_THRESHOLD and conn.state not in ("draining", "closed"):
+            if conn.errors > _ERROR_THRESHOLD and conn.state not in (
+                "draining",
+                "closed",
+            ):
                 logger.error(
                     f"[connection_pool] conn={conn_id} node={conn.node_id} "
                     f"errors={conn.errors} -> state=error"
@@ -264,7 +269,9 @@ class ConnectionPool:
                     "total_bytes_sent": sum(c.bytes_sent for c in conns),
                     "total_bytes_recv": sum(c.bytes_recv for c in conns),
                     "error_count": sum(c.errors for c in conns),
-                    "backpressure": all(c.state == "error" for c in conns) if conns else True,
+                    "backpressure": all(c.state == "error" for c in conns)
+                    if conns
+                    else True,
                     "connections": [c.to_dict() for c in conns],
                 }
         return result
@@ -282,7 +289,9 @@ class ConnectionPool:
         with self._lock:
             for node_id, conns in self._pool.items():
                 active = sum(1 for c in conns if c.state == "connected")
-                lines.append(f'exo_pool_connections_active{{node="{node_id}"}} {active}')
+                lines.append(
+                    f'exo_pool_connections_active{{node="{node_id}"}} {active}'
+                )
         return "\n".join(lines) + "\n"
 
     # ------------------------------------------------------------------ #

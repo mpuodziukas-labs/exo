@@ -7,7 +7,7 @@ from typing import Any
 
 from loguru import logger
 
-_BATCH_TIMEOUT = 60.0   # seconds per item
+_BATCH_TIMEOUT = 60.0  # seconds per item
 _MAX_BATCH_SIZE = 32
 
 
@@ -41,8 +41,16 @@ class BatchInferenceHandler:
         self._total_latency_ms: float = 0.0
 
     def stats(self) -> dict[str, Any]:
-        avg = (self._total_latency_ms / self._total_batches) if self._total_batches > 0 else 0.0
-        avg_batch_size = (self._total_items / self._total_batches) if self._total_batches > 0 else 0.0
+        avg = (
+            (self._total_latency_ms / self._total_batches)
+            if self._total_batches > 0
+            else 0.0
+        )
+        avg_batch_size = (
+            (self._total_items / self._total_batches)
+            if self._total_batches > 0
+            else 0.0
+        )
         return {
             "total_batches": self._total_batches,
             "total_items": self._total_items,
@@ -62,7 +70,9 @@ class BatchInferenceHandler:
             start = time.monotonic()
             try:
                 content = await asyncio.wait_for(
-                    inference_fn(item.messages, item.model, item.max_tokens, item.temperature),
+                    inference_fn(
+                        item.messages, item.model, item.max_tokens, item.temperature
+                    ),
                     timeout=_BATCH_TIMEOUT,
                 )
                 return BatchResult(
@@ -73,7 +83,9 @@ class BatchInferenceHandler:
                     tokens_generated=len(content.split()) if content else 0,
                 )
             except asyncio.TimeoutError:
-                logger.warning(f"BatchInference item={item.index} timeout after {_BATCH_TIMEOUT}s")
+                logger.warning(
+                    f"BatchInference item={item.index} timeout after {_BATCH_TIMEOUT}s"
+                )
                 return BatchResult(
                     index=item.index,
                     content=None,

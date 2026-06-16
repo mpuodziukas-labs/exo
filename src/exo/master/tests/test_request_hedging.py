@@ -140,7 +140,9 @@ async def test_hedge_wins_when_primary_is_slow() -> None:
         return "hedge-result"
 
     # delay_ms=0 → hedge fires immediately and wins
-    result, winner = await ctrl.run_with_hedge(slow_primary(), fast_hedge(), delay_ms=0.0)
+    result, winner = await ctrl.run_with_hedge(
+        slow_primary(), fast_hedge(), delay_ms=0.0
+    )
     assert winner == "hedge"
     assert result == "hedge-result"
     assert ctrl._stats.hedge_wins == 1
@@ -166,7 +168,9 @@ async def test_losing_task_is_cancelled() -> None:
         return "hedge"
 
     # delay=0: hedge fires immediately and wins; primary is the loser
-    result, winner = await ctrl.run_with_hedge(slow_primary(), fast_hedge(), delay_ms=0.0)
+    result, winner = await ctrl.run_with_hedge(
+        slow_primary(), fast_hedge(), delay_ms=0.0
+    )
     assert winner == "hedge"
     # stats.cancelled incremented synchronously by run_with_hedge
     assert ctrl._stats.cancelled == 1

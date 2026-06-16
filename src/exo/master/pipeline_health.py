@@ -3,6 +3,7 @@ Inference pipeline health score: computes a single composite 0-100 score
 for the end-to-end inference pipeline by combining scores from all subsystems.
 Used as the primary dashboard signal and for automated gate decisions.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -16,8 +17,8 @@ from loguru import logger
 @dataclass
 class SubsystemScore:
     name: str
-    score: float        # 0.0 - 100.0
-    weight: float       # relative weight in composite
+    score: float  # 0.0 - 100.0
+    weight: float  # relative weight in composite
     detail: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -34,7 +35,12 @@ _SUBSYSTEM_EXTRACTORS: list[tuple[str, str, str, float]] = [
     # (module_path, attr, method_or_key, weight)
     ("exo.master.health_score", "HEALTH_SCORER", "current().overall_score", 0.30),
     ("exo.master.quorum_check", "QUORUM_CHECKER", "quorum_met", 0.20),
-    ("exo.master.graceful_degradation", "DEGRADATION_CONTROLLER", "blocks_inference", 0.20),
+    (
+        "exo.master.graceful_degradation",
+        "DEGRADATION_CONTROLLER",
+        "blocks_inference",
+        0.20,
+    ),
     ("exo.master.circuit_breaker", "CIRCUIT_BREAKERS", "_all_open_check", 0.15),
     ("exo.master.admission_control", "ADMISSION_CONTROLLER", "_capacity_check", 0.15),
 ]
@@ -69,7 +75,9 @@ def _safe_get_score(module_path: str, attr: str, expr: str) -> float:
             return 100.0 * max(0, 1 - current / max(max_c, 1))
         return 50.0
     except Exception as exc:
-        logger.debug(f"PipelineHealth: score extraction failed {module_path}.{attr}: {exc}")
+        logger.debug(
+            f"PipelineHealth: score extraction failed {module_path}.{attr}: {exc}"
+        )
         return 50.0  # neutral on failure
 
 
@@ -82,17 +90,30 @@ class PipelineHealthScorer:
         subsystems: list[SubsystemScore] = []
         for module_path, attr, expr, weight in _SUBSYSTEM_EXTRACTORS:
             score = _safe_get_score(module_path, attr, expr)
-            subsystems.append(SubsystemScore(
-                name=attr, score=score, weight=weight,
-                detail=f"{module_path}"
-            ))
+            subsystems.append(
+                SubsystemScore(
+                    name=attr, score=score, weight=weight, detail=f"{module_path}"
+                )
+            )
 
         total_weight = sum(s.weight for s in subsystems)
-        composite = sum(s.score * s.weight for s in subsystems) / max(total_weight, 0.001)
+        composite = sum(s.score * s.weight for s in subsystems) / max(
+            total_weight, 0.001
+        )
         self._last_score = composite
         self._last_computed = time.time()
 
-        grade = "A" if composite >= 90 else "B" if composite >= 75 else "C" if composite >= 60 else "D" if composite >= 40 else "F"
+        grade = (
+            "A"
+            if composite >= 90
+            else "B"
+            if composite >= 75
+            else "C"
+            if composite >= 60
+            else "D"
+            if composite >= 40
+            else "F"
+        )
 
         return {
             "composite_score": round(composite, 2),

@@ -12,8 +12,8 @@ from loguru import logger
 class NodeCapabilityAnnouncement:
     node_id: str
     hostname: str
-    platform: str           # darwin / linux
-    device_type: str        # apple_silicon / cuda / cpu
+    platform: str  # darwin / linux
+    device_type: str  # apple_silicon / cuda / cpu
     total_ram_gb: float
     available_ram_gb: float
     compute_tflops: float
@@ -52,19 +52,27 @@ def _detect_local_capabilities(node_id: str) -> NodeCapabilityAnnouncement:
     # RAM detection
     try:
         import psutil  # type: ignore[import-untyped]
-        total_ram_gb = psutil.virtual_memory().total / (1024 ** 3)
+
+        total_ram_gb = psutil.virtual_memory().total / (1024**3)
     except ImportError:
         if sys_platform == "darwin":
             try:
                 import subprocess
-                result = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=2.0)
-                total_ram_gb = int(result.stdout.strip()) / (1024 ** 3)
+
+                result = subprocess.run(
+                    ["sysctl", "-n", "hw.memsize"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2.0,
+                )
+                total_ram_gb = int(result.stdout.strip()) / (1024**3)
             except Exception as exc:
                 logger.debug("sysctl RAM detection failed: {}", exc)
 
     # MLX detection
     try:
         import mlx.core as mx  # type: ignore[import-untyped]
+
         mlx_available = True
         device_type = "apple_silicon"
         compute_tflops = 10.0  # conservative estimate for Apple Silicon
@@ -75,11 +83,14 @@ def _detect_local_capabilities(node_id: str) -> NodeCapabilityAnnouncement:
     # CUDA detection
     try:
         import torch  # type: ignore[import-untyped]
+
         cuda_available = torch.cuda.is_available()
         if cuda_available:
             device_type = "cuda"
             props = torch.cuda.get_device_properties(0)
-            compute_tflops = props.multi_processor_count * 128 * 2 * props.max_clock_rate * 1e-9
+            compute_tflops = (
+                props.multi_processor_count * 128 * 2 * props.max_clock_rate * 1e-9
+            )
     except ImportError as exc:
         logger.debug("torch not available for CUDA detection: {}", exc)
 
@@ -119,7 +130,9 @@ class PeerCapabilityAnnouncer:
 
     def receive_peer(self, announcement: NodeCapabilityAnnouncement) -> None:
         self._peers[announcement.node_id] = announcement
-        logger.debug(f"PeerCapabilityAnnouncer received peer node={announcement.node_id}")
+        logger.debug(
+            f"PeerCapabilityAnnouncer received peer node={announcement.node_id}"
+        )
 
     def get_peer(self, node_id: str) -> NodeCapabilityAnnouncement | None:
         return self._peers.get(node_id)

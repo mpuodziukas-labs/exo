@@ -3,6 +3,7 @@ End-to-end latency budget enforcer: assigns a total time budget to each request
 based on its SLA tier. Tracks elapsed time at key phases (queue, prefill, decode).
 Cancels the request if the budget is exceeded before completion.
 """
+
 from __future__ import annotations
 
 import time

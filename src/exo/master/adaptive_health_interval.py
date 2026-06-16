@@ -3,6 +3,7 @@ Adaptive health check intervals: under high load increase polling frequency,
 under low load reduce it to save overhead. Bounds: 1s min, 30s max.
 Uses exponential smoothing on request rate to determine load tier.
 """
+
 from __future__ import annotations
 
 import time
@@ -16,9 +17,10 @@ _HIGH_LOAD_RPS = 10.0
 _MEDIUM_LOAD_RPS = 2.0
 
 # Poll interval seconds per tier
-_INTERVAL_HIGH = 1.0      # high load: check every second
-_INTERVAL_MEDIUM = 5.0    # medium load
-_INTERVAL_IDLE = 30.0     # idle: back off
+_INTERVAL_HIGH = 1.0  # high load: check every second
+_INTERVAL_MEDIUM = 5.0  # medium load
+_INTERVAL_IDLE = 30.0  # idle: back off
+
 
 @dataclass
 class HealthIntervalState:
@@ -33,11 +35,14 @@ class HealthIntervalState:
             "current_interval_seconds": self.current_interval,
             "smoothed_rps": round(self.smoothed_rps, 3),
             "load_tier": (
-                "high" if self.smoothed_rps >= _HIGH_LOAD_RPS
-                else "medium" if self.smoothed_rps >= _MEDIUM_LOAD_RPS
+                "high"
+                if self.smoothed_rps >= _HIGH_LOAD_RPS
+                else "medium"
+                if self.smoothed_rps >= _MEDIUM_LOAD_RPS
                 else "idle"
             ),
         }
+
 
 class AdaptiveHealthInterval:
     """
@@ -45,6 +50,7 @@ class AdaptiveHealthInterval:
     Call get_interval() to get current recommended poll interval.
     Interval updates every ~5 seconds based on smoothed RPS.
     """
+
     _ALPHA = 0.3  # EMA smoothing factor
     _UPDATE_WINDOW = 5.0  # seconds
 
@@ -88,5 +94,6 @@ class AdaptiveHealthInterval:
 
     def get_status(self) -> dict[str, Any]:
         return self._state.to_dict()
+
 
 ADAPTIVE_HEALTH_INTERVAL = AdaptiveHealthInterval()

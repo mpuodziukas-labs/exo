@@ -9,11 +9,11 @@ from loguru import logger
 
 
 class ShedLevel(str, Enum):
-    NONE = "none"        # no shedding
-    LIGHT = "light"      # shed BACKGROUND only
-    MODERATE = "moderate" # shed LOW + BACKGROUND
-    HEAVY = "heavy"      # shed NORMAL + LOW + BACKGROUND
-    EMERGENCY = "emergency" # shed everything except CRITICAL
+    NONE = "none"  # no shedding
+    LIGHT = "light"  # shed BACKGROUND only
+    MODERATE = "moderate"  # shed LOW + BACKGROUND
+    HEAVY = "heavy"  # shed NORMAL + LOW + BACKGROUND
+    EMERGENCY = "emergency"  # shed everything except CRITICAL
 
 
 # Retry-after seconds per shed level
@@ -57,7 +57,9 @@ class LoadShedder:
 
     def set_level(self, level: ShedLevel, reason: str = "") -> None:
         if level != self._level:
-            logger.warning(f"LoadShedder level change: {self._level.value} → {level.value} reason={reason}")
+            logger.warning(
+                f"LoadShedder level change: {self._level.value} → {level.value} reason={reason}"
+            )
             self._level = level
             event = ShedEvent(level=level, reason=reason)
             self._history.append(event)
@@ -74,7 +76,9 @@ class LoadShedder:
         if priority.lower() in shed_priorities:
             self._shed_count += 1
             retry = _RETRY_AFTER[self._level]
-            logger.debug(f"LoadShedder SHED priority={priority} level={self._level.value}")
+            logger.debug(
+                f"LoadShedder SHED priority={priority} level={self._level.value}"
+            )
             return True, retry
         return False, 0
 

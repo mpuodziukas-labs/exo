@@ -10,8 +10,8 @@ from loguru import logger
 
 
 class CircuitState(str, Enum):
-    CLOSED = "closed"        # Normal operation — requests flow through
-    OPEN = "open"            # Failure threshold exceeded — fail fast
+    CLOSED = "closed"  # Normal operation — requests flow through
+    OPEN = "open"  # Failure threshold exceeded — fail fast
     HALF_OPEN = "half_open"  # Probe mode — allow limited traffic to test recovery
 
 
@@ -59,7 +59,9 @@ class CircuitBreaker:
 
             if self.state == CircuitState.OPEN:
                 if now - self.last_failure_time >= self.cooldown_seconds:
-                    logger.info(f"Circuit breaker [{self.worker_id}]: OPEN -> HALF_OPEN (probing)")
+                    logger.info(
+                        f"Circuit breaker [{self.worker_id}]: OPEN -> HALF_OPEN (probing)"
+                    )
                     self.state = CircuitState.HALF_OPEN
                     self.last_state_change = now
                     self.success_streak = 0
@@ -121,7 +123,9 @@ class CircuitBreaker:
             "total_requests": self.total_requests,
             "total_failures": self.total_failures,
             "error_rate": round(self.error_rate, 4),
-            "seconds_in_current_state": round(time.monotonic() - self.last_state_change, 1),
+            "seconds_in_current_state": round(
+                time.monotonic() - self.last_state_change, 1
+            ),
         }
 
 

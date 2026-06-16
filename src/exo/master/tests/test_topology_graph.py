@@ -17,6 +17,7 @@ Tests focus on:
 - Empty-graph (zero nodes) returns empty edge list
 - TopologyGraph.cluster_health_score is None when HEALTH_SCORER has no history
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -30,6 +31,7 @@ from exo.master.topology_graph import (
 # ---------------------------------------------------------------------------
 # GraphNode / GraphEdge dataclass tests
 # ---------------------------------------------------------------------------
+
 
 class TestGraphDataclasses:
     def test_graph_node_construction(self) -> None:
@@ -63,6 +65,7 @@ class TestGraphDataclasses:
 # _build_edges link_type classification
 # ---------------------------------------------------------------------------
 
+
 class TestBuildEdgesLinkTypeClassification:
     """Test _build_edges via the full builder, injecting controlled link stats."""
 
@@ -76,8 +79,16 @@ class TestBuildEdgesLinkTypeClassification:
         builder = TopologyGraphBuilder()
         nodes = self._make_two_nodes()
         link_stats = {
-            "n1": {"p50_latency_ms": 0.5, "avg_throughput_mbps": 2000.0, "status": "healthy"},
-            "n2": {"p50_latency_ms": 0.5, "avg_throughput_mbps": 2000.0, "status": "healthy"},
+            "n1": {
+                "p50_latency_ms": 0.5,
+                "avg_throughput_mbps": 2000.0,
+                "status": "healthy",
+            },
+            "n2": {
+                "p50_latency_ms": 0.5,
+                "avg_throughput_mbps": 2000.0,
+                "status": "healthy",
+            },
         }
         with patch("exo.master.topology_graph.LINK_MONITOR") as lm:
             lm.get_stats.return_value = [
@@ -93,8 +104,18 @@ class TestBuildEdgesLinkTypeClassification:
         nodes = self._make_two_nodes()
         with patch("exo.master.topology_graph.LINK_MONITOR") as lm:
             lm.get_stats.return_value = [
-                {"node_id": "n1", "p50_latency_ms": 5.0, "avg_throughput_mbps": 500.0, "status": "healthy"},
-                {"node_id": "n2", "p50_latency_ms": 5.0, "avg_throughput_mbps": 500.0, "status": "healthy"},
+                {
+                    "node_id": "n1",
+                    "p50_latency_ms": 5.0,
+                    "avg_throughput_mbps": 500.0,
+                    "status": "healthy",
+                },
+                {
+                    "node_id": "n2",
+                    "p50_latency_ms": 5.0,
+                    "avg_throughput_mbps": 500.0,
+                    "status": "healthy",
+                },
             ]
             edges = builder._build_edges(nodes)
 
@@ -136,6 +157,7 @@ class TestBuildEdgesLinkTypeClassification:
 # to_d3_json and to_graph_dict
 # ---------------------------------------------------------------------------
 
+
 class TestSerialisation:
     def test_to_d3_json_keys_present(self) -> None:
         builder = TopologyGraphBuilder()
@@ -175,8 +197,18 @@ class TestSerialisation:
             hm.evicted_nodes.return_value = []
             ut.get_node.return_value = None
             lm.get_stats.return_value = [
-                {"node_id": "a", "p50_latency_ms": 1.0, "avg_throughput_mbps": 1000.0, "status": "healthy"},
-                {"node_id": "b", "p50_latency_ms": 1.0, "avg_throughput_mbps": 1000.0, "status": "healthy"},
+                {
+                    "node_id": "a",
+                    "p50_latency_ms": 1.0,
+                    "avg_throughput_mbps": 1000.0,
+                    "status": "healthy",
+                },
+                {
+                    "node_id": "b",
+                    "p50_latency_ms": 1.0,
+                    "avg_throughput_mbps": 1000.0,
+                    "status": "healthy",
+                },
             ]
             hs.current.return_value = None
 

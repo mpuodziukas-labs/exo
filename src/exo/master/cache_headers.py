@@ -3,6 +3,7 @@ API response caching headers: sets correct HTTP cache-control headers on all
 API responses. Inference responses are never cached (private, no-store).
 Static/info endpoints get short max-age. Health endpoints get no-cache with revalidation.
 """
+
 from __future__ import annotations
 
 from typing import Any

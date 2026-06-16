@@ -24,9 +24,7 @@ from exo.master.runbook_executor import RUNBOOK_EXECUTOR
 from exo.master.webhook_notifier import WEBHOOK_NOTIFIER
 from exo.master.worker_reconnect import RECONNECT_TRACKER
 
-_HEARTBEAT_INTERVAL: float = float(
-    os.getenv("EXO_HEARTBEAT_INTERVAL_SECONDS", "10.0")
-)
+_HEARTBEAT_INTERVAL: float = float(os.getenv("EXO_HEARTBEAT_INTERVAL_SECONDS", "10.0"))
 _EVICTION_THRESHOLD: int = int(os.getenv("EXO_EVICTION_THRESHOLD", "3"))
 
 
@@ -166,11 +164,7 @@ class HeartbeatMonitor:
         return [r.node_id for r in self._records.values() if r.evicted]
 
     def alive_nodes(self) -> list[str]:
-        return [
-            r.node_id
-            for r in self._records.values()
-            if not r.evicted
-        ]
+        return [r.node_id for r in self._records.values() if not r.evicted]
 
     def stats(self) -> dict[str, object]:
         now = time.monotonic()

@@ -4,6 +4,7 @@ in response to cluster alerts. Each runbook is a sequence of steps
 (HTTP calls to internal API, log messages, sleep). Safe by default —
 dry-run mode unless EXO_RUNBOOK_LIVE=1.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -101,7 +102,9 @@ class RunbookExecution:
             "success": self.success,
             "dry_run": self.dry_run,
             "error": self.error,
-            "duration_s": round((self.completed_at or time.time()) - self.started_at, 2),
+            "duration_s": round(
+                (self.completed_at or time.time()) - self.started_at, 2
+            ),
         }
 
 
@@ -113,7 +116,9 @@ _BUILTIN_RUNBOOKS: list[Runbook] = [
         description="Log worker down and check health after 30s",
         priority=RunbookPriority.P1,
         steps=[
-            RunbookStep(StepType.LOG, message="Worker down — waiting 30s before health check"),
+            RunbookStep(
+                StepType.LOG, message="Worker down — waiting 30s before health check"
+            ),
             RunbookStep(StepType.SLEEP, sleep_s=30.0),
             RunbookStep(StepType.HTTP_GET, path="/v1/health"),
         ],
@@ -152,23 +157,33 @@ class RunbookExecutor:
     # Registration — accepts either a Runbook object or name+steps dict
     # ------------------------------------------------------------------
 
-    def register(self, runbook_or_name: "Runbook | str", steps: list[Any] | None = None,
-                 trigger: str = "manual", description: str = "",
-                 priority: RunbookPriority = RunbookPriority.P2) -> None:
+    def register(
+        self,
+        runbook_or_name: "Runbook | str",
+        steps: list[Any] | None = None,
+        trigger: str = "manual",
+        description: str = "",
+        priority: RunbookPriority = RunbookPriority.P2,
+    ) -> None:
         if isinstance(runbook_or_name, Runbook):
             rb = runbook_or_name
         else:
             name = runbook_or_name
             rb_steps: list[RunbookStep] = []
-            for s in (steps or []):
+            for s in steps or []:
                 if callable(s):
                     rb_steps.append(RunbookStep(StepType.CALLABLE, fn=s))
                 elif isinstance(s, RunbookStep):
                     rb_steps.append(s)
                 else:
                     rb_steps.append(RunbookStep(StepType.LOG, message=str(s)))
-            rb = Runbook(name=name, trigger=trigger, steps=rb_steps,
-                         description=description, priority=priority)
+            rb = Runbook(
+                name=name,
+                trigger=trigger,
+                steps=rb_steps,
+                description=description,
+                priority=priority,
+            )
         self._runbooks[rb.name] = rb
         logger.info(f"RunbookExecutor: registered runbook={rb.name}")
 
@@ -241,9 +256,12 @@ class RunbookExecutor:
     # Async execute (original interface, extended)
     # ------------------------------------------------------------------
 
-    async def execute(self, runbook_or_name: "Runbook | str",
-                      trigger_context: dict[str, Any] | None = None,
-                      dry_run: bool = False) -> RunbookExecution:
+    async def execute(
+        self,
+        runbook_or_name: "Runbook | str",
+        trigger_context: dict[str, Any] | None = None,
+        dry_run: bool = False,
+    ) -> RunbookExecution:
         if isinstance(runbook_or_name, str):
             runbook = self._get_runbook(runbook_or_name)
         else:
@@ -284,9 +302,12 @@ class RunbookExecutor:
                     elif step.step_type in (StepType.HTTP_POST, StepType.HTTP_GET):
                         try:
                             import httpx
+
                             async with httpx.AsyncClient(timeout=10.0) as client:
                                 if step.step_type == StepType.HTTP_POST:
-                                    await client.post(f"{_API_BASE}{step.path}", json=step.body)
+                                    await client.post(
+                                        f"{_API_BASE}{step.path}", json=step.body
+                                    )
                                 else:
                                     await client.get(f"{_API_BASE}{step.path}")
                             sr.output = f"http ok {step.path}"
@@ -294,7 +315,9 @@ class RunbookExecutor:
                         except Exception as exc:
                             sr.error = str(exc)
                             sr.success = False
-                            logger.warning(f"Runbook [{runbook.name}] HTTP error: {exc}")
+                            logger.warning(
+                                f"Runbook [{runbook.name}] HTTP error: {exc}"
+                            )
                     else:
                         sr.output = f"step_type={step.step_type.value} unhandled"
                         sr.success = True
@@ -316,7 +339,9 @@ class RunbookExecutor:
         self._last_results[runbook.name] = execution
         return execution
 
-    async def trigger(self, event: str, context: dict[str, Any]) -> list[RunbookExecution]:
+    async def trigger(
+        self, event: str, context: dict[str, Any]
+    ) -> list[RunbookExecution]:
         runbooks = self.get_for_trigger(event)
         if not runbooks:
             return []
@@ -339,7 +364,9 @@ class RunbookExecutor:
         """Re-register built-in runbooks. Called at startup."""
         for rb in _BUILTIN_RUNBOOKS:
             self._runbooks[rb.name] = rb
-        logger.info(f"RunbookExecutor: default runbooks registered ({len(_BUILTIN_RUNBOOKS)})")
+        logger.info(
+            f"RunbookExecutor: default runbooks registered ({len(_BUILTIN_RUNBOOKS)})"
+        )
 
 
 RUNBOOK_EXECUTOR = RunbookExecutor()

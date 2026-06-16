@@ -103,7 +103,9 @@ class BatchProcessor:
         return True
 
     def list_jobs(self, limit: int = 20) -> list[BatchJob]:
-        return sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True)[:limit]
+        return sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True)[
+            :limit
+        ]
 
     async def run_job(self, job_id: str, inference_fn: InferenceFn) -> None:
         job = self._jobs.get(job_id)
@@ -137,7 +139,9 @@ class BatchProcessor:
                 item.status = "failed"
                 item.error = str(exc)
                 job.failed += 1
-                logger.warning(f"[batch] job_id={job_id} item_id={item.item_id} failed: {exc}")
+                logger.warning(
+                    f"[batch] job_id={job_id} item_id={item.item_id} failed: {exc}"
+                )
             finally:
                 item.completed_at = time.time()
         if job.status != "cancelled":

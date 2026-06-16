@@ -30,7 +30,9 @@ class ClientSloStats:
 
     def add_sample(self, ttft_ms: float, total_ms: float, tokens: int) -> None:
         with self._lock:
-            self.samples.append(SloSample(ttft_ms=ttft_ms, total_ms=total_ms, tokens=tokens))
+            self.samples.append(
+                SloSample(ttft_ms=ttft_ms, total_ms=total_ms, tokens=tokens)
+            )
 
     def _sorted_ttft(self) -> list[float]:
         return sorted(s.ttft_ms for s in self.samples)
@@ -102,7 +104,9 @@ class SloTracker:
         self._clients: dict[str, ClientSloStats] = {}
         self._lock = Lock()
 
-    def record(self, client_key: str, ttft_ms: float, total_ms: float, tokens: int) -> None:
+    def record(
+        self, client_key: str, ttft_ms: float, total_ms: float, tokens: int
+    ) -> None:
         with self._lock:
             if client_key not in self._clients:
                 self._clients[client_key] = ClientSloStats(client_key)
@@ -141,10 +145,18 @@ class SloTracker:
         n_total = len(all_total)
         return {
             "client_count": len(clients),
-            "global_p50_ttft_ms": round(all_ttft[int(n_ttft * 0.50)] if n_ttft else 0.0, 2),
-            "global_p99_ttft_ms": round(all_ttft[min(int(n_ttft * 0.99), n_ttft - 1)] if n_ttft else 0.0, 2),
-            "global_p50_total_ms": round(all_total[int(n_total * 0.50)] if n_total else 0.0, 2),
-            "global_p99_total_ms": round(all_total[min(int(n_total * 0.99), n_total - 1)] if n_total else 0.0, 2),
+            "global_p50_ttft_ms": round(
+                all_ttft[int(n_ttft * 0.50)] if n_ttft else 0.0, 2
+            ),
+            "global_p99_ttft_ms": round(
+                all_ttft[min(int(n_ttft * 0.99), n_ttft - 1)] if n_ttft else 0.0, 2
+            ),
+            "global_p50_total_ms": round(
+                all_total[int(n_total * 0.50)] if n_total else 0.0, 2
+            ),
+            "global_p99_total_ms": round(
+                all_total[min(int(n_total * 0.99), n_total - 1)] if n_total else 0.0, 2
+            ),
             "total_violations": sum(c.violations for c in clients),
             "slo_ms": _TTFT_SLO_MS,
         }

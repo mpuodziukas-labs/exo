@@ -3,6 +3,7 @@ Worker reconnect backoff: when a worker disconnects, tracks reconnect attempts
 with exponential backoff. Prevents thundering-herd reconnects after a master restart.
 Each worker gets an independent backoff state; resets on successful reconnect.
 """
+
 from __future__ import annotations
 
 import time
@@ -11,8 +12,8 @@ from typing import Any
 
 from loguru import logger
 
-_BASE_DELAY = 1.0     # seconds
-_MAX_DELAY = 60.0     # seconds
+_BASE_DELAY = 1.0  # seconds
+_MAX_DELAY = 60.0  # seconds
 _MULTIPLIER = 2.0
 
 
@@ -25,7 +26,7 @@ class ReconnectState:
     last_reconnect_at: float = 0.0
 
     def backoff_delay(self) -> float:
-        return min(_BASE_DELAY * (_MULTIPLIER ** self.attempt), _MAX_DELAY)
+        return min(_BASE_DELAY * (_MULTIPLIER**self.attempt), _MAX_DELAY)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -84,7 +85,9 @@ class WorkerReconnectTracker:
         return [s.to_dict() for s in self._states.values()]
 
     def get_stats(self) -> dict[str, Any]:
-        backing_off = [s for s in self._states.values() if time.time() < s.next_allowed_at]
+        backing_off = [
+            s for s in self._states.values() if time.time() < s.next_allowed_at
+        ]
         return {
             "tracked_nodes": len(self._states),
             "backing_off": len(backing_off),

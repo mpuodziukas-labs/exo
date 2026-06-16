@@ -66,7 +66,7 @@ def test_interspersed_successes_still_trip_on_window_failures() -> None:
     """Successes between failures don't stop window-based trip detection."""
     wcb = _make_wcb(failure_threshold=3)
     wcb.record_failure()
-    wcb.record_success()   # doesn't reset the window timestamps
+    wcb.record_success()  # doesn't reset the window timestamps
     wcb.record_failure()
     wcb.record_success()
     wcb.record_failure()
@@ -111,7 +111,7 @@ def test_probe_success_closes_circuit() -> None:
     wcb.record_failure()  # → OPEN
     wcb._opened_at = 0.0  # force cooldown expired
 
-    wcb.allow_request()   # → HALF_OPEN
+    wcb.allow_request()  # → HALF_OPEN
     wcb.record_success()  # → CLOSED
 
     assert wcb.state == WorkerCircuitState.CLOSED
@@ -124,7 +124,7 @@ def test_probe_failure_reopens_circuit() -> None:
     wcb.record_failure()  # → OPEN
     wcb._opened_at = 0.0
 
-    wcb.allow_request()   # → HALF_OPEN
+    wcb.allow_request()  # → HALF_OPEN
     wcb.record_failure()  # → OPEN
     assert wcb.state == WorkerCircuitState.OPEN
 

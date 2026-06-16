@@ -3,6 +3,7 @@ Per-endpoint error budget tracker: tracks success/error counts per API endpoint.
 Computes error rate and remaining error budget (SLO target: 99.9% success = 0.1% error budget).
 Alerts when budget is >50% consumed.
 """
+
 from __future__ import annotations
 
 import time
@@ -12,9 +13,9 @@ from typing import Any
 
 from loguru import logger
 
-_SLO_TARGET = 0.999          # 99.9% success rate
-_WINDOW_SECONDS = 3600.0     # 1-hour rolling window
-_ALERT_THRESHOLD = 0.5       # alert when 50% of error budget consumed
+_SLO_TARGET = 0.999  # 99.9% success rate
+_WINDOW_SECONDS = 3600.0  # 1-hour rolling window
+_ALERT_THRESHOLD = 0.5  # alert when 50% of error budget consumed
 
 
 @dataclass

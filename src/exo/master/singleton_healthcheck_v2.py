@@ -9,6 +9,7 @@ accepts explicit registrations of (name, check_fn) pairs. Designed for:
 
 Karpathy rule: one function, one job.  Fail loudly.
 """
+
 from __future__ import annotations
 
 import concurrent.futures
@@ -30,7 +31,7 @@ class CheckEntry:
 @dataclass
 class CheckResult:
     name: str
-    status: str          # "ok" | "error" | "timeout"
+    status: str  # "ok" | "error" | "timeout"
     error: str = ""
     duration_s: float = 0.0
 
@@ -93,15 +94,19 @@ class SingletonHealthcheck:
                 duration = time.monotonic() - t0
                 logger.warning(f"SingletonHealthcheck: timeout on check={entry.name!r}")
                 return CheckResult(
-                    name=entry.name, status="timeout",
+                    name=entry.name,
+                    status="timeout",
                     error=f"exceeded {self._timeout_s}s timeout",
                     duration_s=duration,
                 )
             except Exception as exc:
                 duration = time.monotonic() - t0
-                logger.warning(f"SingletonHealthcheck: error on check={entry.name!r}: {exc}")
+                logger.warning(
+                    f"SingletonHealthcheck: error on check={entry.name!r}: {exc}"
+                )
                 return CheckResult(
-                    name=entry.name, status="error",
+                    name=entry.name,
+                    status="error",
                     error=str(exc),
                     duration_s=duration,
                 )

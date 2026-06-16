@@ -6,6 +6,7 @@ to the SSE stream. Supports three modes:
   - sentence:  flush on sentence boundary (period/newline) for lowest overhead
 Configurable via EXO_FLUSH_MODE env var.
 """
+
 from __future__ import annotations
 
 import os
@@ -24,8 +25,8 @@ class FlushMode(str, Enum):
     SENTENCE = "sentence"
 
 
-_WORD_BOUNDARY = re.compile(r'[\s,;:!?\"\'\(\)\[\]{}<>]')
-_SENTENCE_BOUNDARY = re.compile(r'[.!?\n]')
+_WORD_BOUNDARY = re.compile(r"[\s,;:!?\"\'\(\)\[\]{}<>]")
+_SENTENCE_BOUNDARY = re.compile(r"[.!?\n]")
 
 
 class StreamFlushPolicy:
@@ -41,7 +42,9 @@ class StreamFlushPolicy:
             try:
                 self._mode = FlushMode(_FLUSH_MODE_ENV)
             except ValueError:
-                logger.warning(f"StreamFlushPolicy: unknown mode '{_FLUSH_MODE_ENV}', using immediate")
+                logger.warning(
+                    f"StreamFlushPolicy: unknown mode '{_FLUSH_MODE_ENV}', using immediate"
+                )
                 self._mode = FlushMode.IMMEDIATE
         logger.info(f"StreamFlushPolicy: mode={self._mode.value}")
 

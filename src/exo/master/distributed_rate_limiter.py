@@ -6,8 +6,8 @@ from typing import Any
 
 from loguru import logger
 
-_DEFAULT_RPM = 60        # requests per minute per client
-_DEFAULT_TPM = 100_000   # tokens per minute per client
+_DEFAULT_RPM = 60  # requests per minute per client
+_DEFAULT_TPM = 100_000  # tokens per minute per client
 _WINDOW_S = 60.0
 
 
@@ -32,7 +32,10 @@ class ClientRateState:
         if req_count >= self.rpm_limit:
             return False, f"RPM limit {self.rpm_limit} exceeded ({req_count} in window)"
         if tok_count + tokens > self.tpm_limit:
-            return False, f"TPM limit {self.tpm_limit} exceeded ({tok_count}+{tokens}>{self.tpm_limit})"
+            return (
+                False,
+                f"TPM limit {self.tpm_limit} exceeded ({tok_count}+{tokens}>{self.tpm_limit})",
+            )
 
         self._requests.append((time.monotonic(), tokens))
         return True, "ok"
@@ -65,13 +68,17 @@ class DistributedRateLimiter:
         self._total_allowed = 0
         self._total_denied = 0
 
-    def set_limits(self, client_id: str, rpm: int | None = None, tpm: int | None = None) -> None:
+    def set_limits(
+        self, client_id: str, rpm: int | None = None, tpm: int | None = None
+    ) -> None:
         state = self._get_or_create(client_id)
         if rpm is not None:
             state.rpm_limit = rpm
         if tpm is not None:
             state.tpm_limit = tpm
-        logger.info(f"DistributedRateLimit set client={client_id} rpm={state.rpm_limit} tpm={state.tpm_limit}")
+        logger.info(
+            f"DistributedRateLimit set client={client_id} rpm={state.rpm_limit} tpm={state.tpm_limit}"
+        )
 
     def _get_or_create(self, client_id: str) -> ClientRateState:
         if client_id not in self._clients:
@@ -99,7 +106,9 @@ class DistributedRateLimiter:
         return {
             "total_allowed": self._total_allowed,
             "total_denied": self._total_denied,
-            "deny_rate": round(self._total_denied / max(self._total_allowed + self._total_denied, 1), 4),
+            "deny_rate": round(
+                self._total_denied / max(self._total_allowed + self._total_denied, 1), 4
+            ),
             "client_count": len(self._clients),
         }
 

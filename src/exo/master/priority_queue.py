@@ -114,7 +114,9 @@ class PriorityRequestQueue:
                 "enqueued_total": self._enqueued_total,
                 "dequeued_total": self._dequeued_total,
                 "preempted_total": self._preempted_total,
-                "highest_pending_priority": (-self._heap[0].neg_priority) if self._heap else None,
+                "highest_pending_priority": (-self._heap[0].neg_priority)
+                if self._heap
+                else None,
             }
 
     def prometheus_metrics(self) -> str:

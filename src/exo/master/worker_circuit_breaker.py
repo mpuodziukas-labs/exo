@@ -171,7 +171,8 @@ class WorkerCircuitBreakerRegistry:
         with self._lock:
             if worker_id not in self._breakers:
                 self._breakers[worker_id] = WorkerCircuitBreaker(
-                    worker_id=worker_id, **self._cfg  # type: ignore[arg-type]
+                    worker_id=worker_id,
+                    **self._cfg,  # type: ignore[arg-type]
                 )
             return self._breakers[worker_id]
 

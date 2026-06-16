@@ -4,6 +4,7 @@ Webhook notifier: sends HTTP POST to registered webhooks on key cluster events
 Webhooks registered via API or EXO_WEBHOOK_URL env var.
 Uses httpx with 5s timeout; failures are logged but do not affect hot path.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,17 +20,27 @@ from loguru import logger
 
 try:
     import httpx as _httpx
+
     _HAS_HTTPX = True
 except ImportError:
     _httpx = None  # type: ignore[assignment]
     _HAS_HTTPX = False
     logger.debug("httpx not available — webhook notifications disabled")
 
-_EVENT_TYPES = frozenset({
-    "worker_down", "worker_up", "model_loaded", "cluster_panic",
-    "quota_exceeded", "slo_violated", "split_brain", "quorum_lost",
-    "election", "model_downloaded",
-})
+_EVENT_TYPES = frozenset(
+    {
+        "worker_down",
+        "worker_up",
+        "model_loaded",
+        "cluster_panic",
+        "quota_exceeded",
+        "slo_violated",
+        "split_brain",
+        "quorum_lost",
+        "election",
+        "model_downloaded",
+    }
+)
 
 
 def _make_webhook_id(url: str, events: set[str]) -> str:
@@ -42,7 +53,7 @@ def _make_webhook_id(url: str, events: set[str]) -> str:
 class WebhookRegistration:
     url: str
     webhook_id: str = ""
-    secret: str = ""   # HMAC-SHA256 secret for signature
+    secret: str = ""  # HMAC-SHA256 secret for signature
     events: set[str] = field(default_factory=lambda: set(_EVENT_TYPES))
     created_at: float = field(default_factory=time.time)
     delivery_count: int = 0
@@ -88,15 +99,21 @@ class WebhookNotifier:
             self.register(url, secret=os.getenv("EXO_WEBHOOK_SECRET", ""))
             logger.info("WebhookNotifier: loaded URL from EXO_WEBHOOK_URL")
 
-    def register(self, url: str, secret: str = "", events: set[str] | None = None) -> str:
+    def register(
+        self, url: str, secret: str = "", events: set[str] | None = None
+    ) -> str:
         """Register a webhook; silently dedup by (url, events). Returns webhook_id."""
         if not url.startswith(("http://", "https://")):
-            raise ValueError(f"WebhookNotifier: url must start with http:// or https://, got {url[:40]!r}")
+            raise ValueError(
+                f"WebhookNotifier: url must start with http:// or https://, got {url[:40]!r}"
+            )
         ev = events if events is not None else set(_EVENT_TYPES)
         wh = WebhookRegistration(url=url, secret=secret, events=ev)
         if wh.webhook_id not in self._webhooks:
             self._webhooks[wh.webhook_id] = wh
-            logger.info(f"WebhookNotifier: registered id={wh.webhook_id} url={url[:40]}")
+            logger.info(
+                f"WebhookNotifier: registered id={wh.webhook_id} url={url[:40]}"
+            )
         return wh.webhook_id
 
     def unregister(self, webhook_id: str) -> bool:
@@ -130,14 +147,18 @@ class WebhookNotifier:
                 loop.close()
 
     async def _dispatch(self, event_type: str, payload: dict[str, Any]) -> None:
-        body = json.dumps({"event": event_type, "timestamp": time.time(), "data": payload})
+        body = json.dumps(
+            {"event": event_type, "timestamp": time.time(), "data": payload}
+        )
 
         async def _send(wh: WebhookRegistration) -> None:
             if event_type not in wh.events:
                 return
             headers: dict[str, str] = {"Content-Type": "application/json"}
             if wh.secret:
-                sig = hmac.new(wh.secret.encode(), body.encode(), hashlib.sha256).hexdigest()
+                sig = hmac.new(
+                    wh.secret.encode(), body.encode(), hashlib.sha256
+                ).hexdigest()
                 headers["X-Exo-Signature"] = f"sha256={sig}"
             last_exc: Exception | None = None
             for attempt in range(self.max_retries):
@@ -149,16 +170,22 @@ class WebhookNotifier:
                     if resp.status_code >= 400:
                         wh.failure_count += 1
                         self._total_failed += 1
-                        logger.warning(f"Webhook: {wh.url[:40]} HTTP {resp.status_code} (attempt {attempt+1})")
+                        logger.warning(
+                            f"Webhook: {wh.url[:40]} HTTP {resp.status_code} (attempt {attempt + 1})"
+                        )
                     return
                 except Exception as exc:
                     last_exc = exc
-                    logger.debug(f"Webhook: send failed {wh.url[:40]} attempt={attempt+1}: {exc}")
+                    logger.debug(
+                        f"Webhook: send failed {wh.url[:40]} attempt={attempt + 1}: {exc}"
+                    )
             if last_exc is not None:
                 wh.failure_count += 1
                 self._total_failed += 1
 
-        await asyncio.gather(*[_send(wh) for wh in self._webhooks.values()], return_exceptions=True)
+        await asyncio.gather(
+            *[_send(wh) for wh in self._webhooks.values()], return_exceptions=True
+        )
 
     def stats(self) -> dict[str, Any]:
         return {

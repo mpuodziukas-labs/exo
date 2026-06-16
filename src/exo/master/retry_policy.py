@@ -99,8 +99,8 @@ class RetryManager:
     def __init__(self, policy: RetryPolicy | None = None) -> None:
         self._policy: RetryPolicy = policy or RetryPolicy()
         self._history: deque[RetryRecord] = deque(maxlen=500)
-        self._active: dict[str, int] = {}          # trace_id → current attempt count
-        self._successes: dict[str, bool] = {}      # trace_id → True if eventual success
+        self._active: dict[str, int] = {}  # trace_id → current attempt count
+        self._successes: dict[str, bool] = {}  # trace_id → True if eventual success
         self._lock: Lock = Lock()
 
         # aggregate counters (never reset — suitable for /v1/retry-policy)
@@ -171,7 +171,7 @@ class RetryManager:
         with self._lock:
             attempt = self._active.get(trace_id, 0)
 
-        raw = self._policy.base_delay_ms * (self._policy.backoff_factor ** attempt)
+        raw = self._policy.base_delay_ms * (self._policy.backoff_factor**attempt)
         capped = min(raw, self._policy.max_delay_ms)
         jitter = random.uniform(0.0, 100.0)
         return round(capped + jitter, 2)

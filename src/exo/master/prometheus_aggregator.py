@@ -20,7 +20,9 @@ class PrometheusAggregator:
             self._sources[name] = source
             logger.debug(f"PrometheusAggregator registered source={name}")
         else:
-            logger.warning(f"PrometheusAggregator: {name} has no prometheus_metrics() method, skipping")
+            logger.warning(
+                f"PrometheusAggregator: {name} has no prometheus_metrics() method, skipping"
+            )
 
     def aggregate(self) -> str:
         """Alias for collect() — Prometheus scrape-format text of all registered sources."""
@@ -59,13 +61,22 @@ class PrometheusAggregator:
             ("mfu_reporter", "exo.master.mfu_reporter", "MFU_REPORTER"),
             ("speculative", "exo.master.speculative_monitor", "SPECULATIVE_MONITOR"),
             ("kvcache", "exo.master.kv_cache_tier", "KV_CACHE_TIER"),
-            ("token_velocity", "exo.master.token_velocity_limiter", "TOKEN_VELOCITY_LIMITER"),
-            ("prefill_decode", "exo.master.prefill_decode_scheduler", "PREFILL_DECODE_SCHEDULER"),
+            (
+                "token_velocity",
+                "exo.master.token_velocity_limiter",
+                "TOKEN_VELOCITY_LIMITER",
+            ),
+            (
+                "prefill_decode",
+                "exo.master.prefill_decode_scheduler",
+                "PREFILL_DECODE_SCHEDULER",
+            ),
         ]
 
         for name, module_path, attr in sources_to_try:
             try:
                 import importlib
+
                 mod = importlib.import_module(module_path)
                 source = getattr(mod, attr)
                 self.register(name, source)

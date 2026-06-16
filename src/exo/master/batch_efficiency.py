@@ -4,6 +4,7 @@ fills each batch (fill_ratio = actual_tokens / max_batch_tokens).
 Tracks padding waste, batch sizes, and throughput efficiency.
 Surfaces these as Prometheus metrics and API endpoint.
 """
+
 from __future__ import annotations
 
 import time
@@ -16,9 +17,9 @@ from loguru import logger
 
 @dataclass
 class BatchSample:
-    batch_size: int          # number of sequences in batch
-    total_tokens: int        # actual tokens processed
-    padded_tokens: int       # padding added
+    batch_size: int  # number of sequences in batch
+    total_tokens: int  # actual tokens processed
+    padded_tokens: int  # padding added
     duration_ms: float
     timestamp: float = field(default_factory=time.time)
 
@@ -65,7 +66,9 @@ class BatchEfficiencyTracker:
 
         if self._total_batches % 100 == 0:
             avg_fill = self._avg_fill_ratio()
-            logger.debug(f"BatchEfficiency: avg_fill={avg_fill:.2%} total_batches={self._total_batches}")
+            logger.debug(
+                f"BatchEfficiency: avg_fill={avg_fill:.2%} total_batches={self._total_batches}"
+            )
 
     def _avg_fill_ratio(self) -> float:
         if not self._samples:
@@ -91,7 +94,10 @@ class BatchEfficiencyTracker:
             "avg_batch_size": round(self._avg_batch_size(), 2),
             "avg_tokens_per_sec": round(self._avg_tps(), 2),
             "padding_waste_pct": round(
-                100 * self._total_padded / max(self._total_tokens + self._total_padded, 1), 2
+                100
+                * self._total_padded
+                / max(self._total_tokens + self._total_padded, 1),
+                2,
             ),
         }
 
@@ -100,13 +106,13 @@ class BatchEfficiencyTracker:
         lines = [
             "# HELP exo_batch_fill_ratio_pct Average batch fill ratio",
             "# TYPE exo_batch_fill_ratio_pct gauge",
-            f'exo_batch_fill_ratio_pct {stats["avg_fill_ratio_pct"]}',
+            f"exo_batch_fill_ratio_pct {stats['avg_fill_ratio_pct']}",
             "# HELP exo_batch_padding_waste_pct Percentage of tokens that are padding",
             "# TYPE exo_batch_padding_waste_pct gauge",
-            f'exo_batch_padding_waste_pct {stats["padding_waste_pct"]}',
+            f"exo_batch_padding_waste_pct {stats['padding_waste_pct']}",
             "# HELP exo_batch_avg_size Average sequences per batch",
             "# TYPE exo_batch_avg_size gauge",
-            f'exo_batch_avg_size {stats["avg_batch_size"]}',
+            f"exo_batch_avg_size {stats['avg_batch_size']}",
         ]
         return "\n".join(lines) + "\n"
 

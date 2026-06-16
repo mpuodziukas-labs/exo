@@ -9,6 +9,7 @@ Focuses on:
 - Violation counter increments
 - Window size cap (deque maxlen)
 """
+
 from __future__ import annotations
 
 import pytest
@@ -18,6 +19,7 @@ from exo.master.slo_tracker import ClientSloStats, SloTracker
 # ---------------------------------------------------------------------------
 # ClientSloStats percentile math
 # ---------------------------------------------------------------------------
+
 
 class TestClientSloStatsPercentiles:
     def test_empty_stats_return_zero(self) -> None:
@@ -70,14 +72,23 @@ class TestClientSloStatsPercentiles:
         stats = ClientSloStats("dict_test")
         stats.add_sample(ttft_ms=50.0, total_ms=100.0, tokens=8)
         d = stats.to_dict()
-        for key in ("client_key", "sample_count", "p50_ttft_ms", "p99_ttft_ms",
-                    "p50_total_ms", "p99_total_ms", "avg_tokens_per_request", "violations"):
+        for key in (
+            "client_key",
+            "sample_count",
+            "p50_ttft_ms",
+            "p99_ttft_ms",
+            "p50_total_ms",
+            "p99_total_ms",
+            "avg_tokens_per_request",
+            "violations",
+        ):
             assert key in d
 
 
 # ---------------------------------------------------------------------------
 # SloTracker aggregation
 # ---------------------------------------------------------------------------
+
 
 class TestSloTrackerAggregation:
     def test_record_creates_client_on_first_call(self) -> None:

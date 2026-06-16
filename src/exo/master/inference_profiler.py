@@ -59,22 +59,25 @@ class InferenceProfile:
         """Chrome tracing format compatible with chrome://tracing and speedscope."""
         events = []
         for span in self.spans:
-            events.append({
-                "name": span.name,
-                "cat": "inference",
-                "ph": "X",
-                "ts": span.start * 1e6,        # microseconds
-                "dur": span.duration_ms * 1000,  # microseconds
-                "pid": 1,
-                "tid": 1,
-                "args": span.metadata,
-            })
+            events.append(
+                {
+                    "name": span.name,
+                    "cat": "inference",
+                    "ph": "X",
+                    "ts": span.start * 1e6,  # microseconds
+                    "dur": span.duration_ms * 1000,  # microseconds
+                    "pid": 1,
+                    "tid": 1,
+                    "args": span.metadata,
+                }
+            )
         return events
 
 
 @dataclass
 class _LatencySample:
     """Flat per-request sample stored by record()."""
+
     model: str
     prompt_tokens: int
     completion_tokens: int
@@ -106,7 +109,9 @@ class InferenceProfiler:
         return profile
 
     @contextmanager
-    def span(self, trace_id: str, phase: str, **metadata: Any) -> Generator[PhaseSpan, None, None]:
+    def span(
+        self, trace_id: str, phase: str, **metadata: Any
+    ) -> Generator[PhaseSpan, None, None]:
         profile = self._active.get(trace_id)
         span = PhaseSpan(name=phase, start=time.monotonic(), metadata=dict(metadata))
         try:
@@ -226,6 +231,7 @@ class InferenceProfiler:
         Token count is bucketed into powers of two (128, 256, 512, 1024, 2048+)
         so that different prompt/completion sizes produce distinct hotspot entries.
         """
+
         def _bucket(tokens: int) -> str:
             for threshold in (128, 256, 512, 1024, 2048):
                 if tokens <= threshold:
@@ -246,13 +252,15 @@ class InferenceProfiler:
             sorted_lats = sorted(lats)
             n = len(sorted_lats)
             p95_idx = max(0, int(n * 0.95) - 1)
-            entries.append({
-                "model": model,
-                "token_bucket": bkt,
-                "count": n,
-                "p95_ms": round(sorted_lats[p95_idx], 2),
-                "avg_ms": round(statistics.mean(lats), 2),
-            })
+            entries.append(
+                {
+                    "model": model,
+                    "token_bucket": bkt,
+                    "count": n,
+                    "p95_ms": round(sorted_lats[p95_idx], 2),
+                    "avg_ms": round(statistics.mean(lats), 2),
+                }
+            )
 
         entries.sort(key=lambda e: e["p95_ms"], reverse=True)
         return entries[:top_n]

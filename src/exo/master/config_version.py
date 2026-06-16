@@ -3,6 +3,7 @@ Config schema versioning: tracks the config schema version and migrates
 old config files forward. Each migration is a pure function from old dict → new dict.
 Ensures backward compatibility when config fields change.
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable
@@ -13,6 +14,7 @@ _CURRENT_VERSION = 3
 
 # Migration functions: version N → N+1
 MigrationFn = Callable[[dict[str, Any]], dict[str, Any]]
+
 
 def _migrate_v1_to_v2(cfg: dict[str, Any]) -> dict[str, Any]:
     """v1 had flat keys; v2 groups them under sections."""
@@ -26,6 +28,7 @@ def _migrate_v1_to_v2(cfg: dict[str, Any]) -> dict[str, Any]:
     result["schema_version"] = 2
     return result
 
+
 def _migrate_v2_to_v3(cfg: dict[str, Any]) -> dict[str, Any]:
     """v3 adds memory_reclaim and health sections."""
     result = dict(cfg)
@@ -33,6 +36,7 @@ def _migrate_v2_to_v3(cfg: dict[str, Any]) -> dict[str, Any]:
     result.setdefault("health", {"probe_interval_s": 5.0})
     result["schema_version"] = 3
     return result
+
 
 _MIGRATIONS: dict[int, MigrationFn] = {
     1: _migrate_v1_to_v2,
@@ -56,7 +60,9 @@ class ConfigVersionManager:
         if version == _CURRENT_VERSION:
             return cfg
         if version > _CURRENT_VERSION:
-            logger.warning(f"ConfigVersion: config version {version} > current {_CURRENT_VERSION} — using as-is")
+            logger.warning(
+                f"ConfigVersion: config version {version} > current {_CURRENT_VERSION} — using as-is"
+            )
             return cfg
 
         result = dict(cfg)
@@ -67,7 +73,7 @@ class ConfigVersionManager:
                 break
             try:
                 result = migration(result)
-                logger.info(f"ConfigVersion: migrated v{version} → v{version+1}")
+                logger.info(f"ConfigVersion: migrated v{version} → v{version + 1}")
             except Exception as exc:
                 logger.warning(f"ConfigVersion: migration v{version} failed: {exc}")
                 break

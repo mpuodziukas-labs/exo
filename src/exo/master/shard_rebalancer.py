@@ -58,11 +58,15 @@ class ShardRebalancer:
     """
 
     def __init__(self) -> None:
-        self._assignments: dict[tuple[str, int], ShardAssignment] = {}  # (model_id, shard_index) -> assignment
+        self._assignments: dict[
+            tuple[str, int], ShardAssignment
+        ] = {}  # (model_id, shard_index) -> assignment
         self._operations: list[RebalanceOperation] = []
         self._op_counter = 0
 
-    def assign_shard(self, model_id: str, node_id: str, shard_index: int, total_shards: int) -> ShardAssignment:
+    def assign_shard(
+        self, model_id: str, node_id: str, shard_index: int, total_shards: int
+    ) -> ShardAssignment:
         key = (model_id, shard_index)
         assignment = ShardAssignment(
             model_id=model_id,

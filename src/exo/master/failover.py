@@ -130,7 +130,9 @@ class FailoverCoordinator:
         )
         return event
 
-    def complete(self, task_id: str, failover_node_id: str | None, success: bool) -> None:
+    def complete(
+        self, task_id: str, failover_node_id: str | None, success: bool
+    ) -> None:
         """Finalise an active failover; move it to history."""
         event = self._active_failovers.pop(task_id, None)
         if event is None:
@@ -188,8 +190,7 @@ class FailoverCoordinator:
 
         # Filter out nodes whose circuit breaker is OPEN
         healthy = [
-            n for n in candidates
-            if CIRCUIT_BREAKERS.get(n).state != CircuitState.OPEN
+            n for n in candidates if CIRCUIT_BREAKERS.get(n).state != CircuitState.OPEN
         ]
         pool = healthy if healthy else candidates  # fall back to all alive if all open
 

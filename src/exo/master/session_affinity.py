@@ -3,6 +3,7 @@ Session affinity: for multi-turn conversations, routes subsequent turns to the
 same worker node that handled the first turn (KV cache locality).
 Tracks session → node_id mapping with TTL expiry and LRU eviction.
 """
+
 from __future__ import annotations
 
 import collections
@@ -12,7 +13,7 @@ from typing import Any
 
 from loguru import logger
 
-_DEFAULT_TTL = 1800.0   # 30 minutes
+_DEFAULT_TTL = 1800.0  # 30 minutes
 _DEFAULT_MAX_SESSIONS = 10_000
 
 
@@ -52,7 +53,9 @@ class SessionAffinityManager:
 
     def __init__(self, max_sessions: int = _DEFAULT_MAX_SESSIONS) -> None:
         self.max_sessions = max_sessions
-        self._entries: collections.OrderedDict[str, AffinityEntry] = collections.OrderedDict()
+        self._entries: collections.OrderedDict[str, AffinityEntry] = (
+            collections.OrderedDict()
+        )
         self._total_sessions: int = 0  # monotonically increasing unique session count
 
     # ------------------------------------------------------------------ bind / record
@@ -64,7 +67,9 @@ class SessionAffinityManager:
                 session_id=session_id, node_id=node_id, ttl=ttl
             )
             self._total_sessions += 1
-            logger.debug(f"SessionAffinity: bound session={session_id} → node={node_id}")
+            logger.debug(
+                f"SessionAffinity: bound session={session_id} → node={node_id}"
+            )
         else:
             # Move to end (most-recently-used)
             self._entries.move_to_end(session_id)
@@ -76,14 +81,18 @@ class SessionAffinityManager:
             entry.node_id = node_id
             entry.touch()
             self._entries.move_to_end(session_id)
-            logger.debug(f"SessionAffinity: updated session={session_id} → node={node_id}")
+            logger.debug(
+                f"SessionAffinity: updated session={session_id} → node={node_id}"
+            )
         else:
             self._evict_if_full()
             self._entries[session_id] = AffinityEntry(
                 session_id=session_id, node_id=node_id, ttl=ttl
             )
             self._total_sessions += 1
-            logger.debug(f"SessionAffinity: recorded session={session_id} → node={node_id}")
+            logger.debug(
+                f"SessionAffinity: recorded session={session_id} → node={node_id}"
+            )
 
     # ------------------------------------------------------------------ get / get_node
     def get(self, session_id: str) -> str | None:

@@ -3,6 +3,7 @@ Multi-node tensor shard validator: verifies that all required model shards are
 present across cluster nodes before dispatching inference. If any shard is
 missing, blocks the request and triggers a re-download.
 """
+
 from __future__ import annotations
 
 import time
@@ -71,34 +72,48 @@ class ShardValidator:
     ) -> None:
         key = (model_id, node_id, shard_index)
         self._shards[key] = ShardStatus(
-            model_id=model_id, node_id=node_id,
-            shard_index=shard_index, total_shards=total_shards,
+            model_id=model_id,
+            node_id=node_id,
+            shard_index=shard_index,
+            total_shards=total_shards,
             present=present,
         )
 
-    def mark_all_present(self, model_id: str, node_ids: list[str], total_shards: int) -> None:
+    def mark_all_present(
+        self, model_id: str, node_ids: list[str], total_shards: int
+    ) -> None:
         """Convenience: mark all shards across all nodes as present."""
         for node_id in node_ids:
             for idx in range(total_shards):
                 self.register_shard(model_id, node_id, idx, total_shards, present=True)
-        logger.debug(f"ShardValidator: marked {total_shards}×{len(node_ids)} shards ready for {model_id}")
+        logger.debug(
+            f"ShardValidator: marked {total_shards}×{len(node_ids)} shards ready for {model_id}"
+        )
 
     def validate(self, model_id: str) -> ShardValidationResult:
         relevant = {k: v for k, v in self._shards.items() if k[0] == model_id}
         if not relevant:
             # No shard info registered — assume ready (legacy path)
             return ShardValidationResult(
-                model_id=model_id, ready=True,
-                missing_shards=[], total_shards=0, present_shards=0,
+                model_id=model_id,
+                ready=True,
+                missing_shards=[],
+                total_shards=0,
+                present_shards=0,
             )
         total = max(v.total_shards for v in relevant.values())
         present = [v for v in relevant.values() if v.present]
-        missing = [(v.node_id, v.shard_index) for v in relevant.values() if not v.present]
+        missing = [
+            (v.node_id, v.shard_index) for v in relevant.values() if not v.present
+        ]
         ready = len(missing) == 0
         if not ready:
-            logger.warning(f"ShardValidator: model={model_id} missing {len(missing)} shards")
+            logger.warning(
+                f"ShardValidator: model={model_id} missing {len(missing)} shards"
+            )
         return ShardValidationResult(
-            model_id=model_id, ready=ready,
+            model_id=model_id,
+            ready=ready,
             missing_shards=missing,
             total_shards=total,
             present_shards=len(present),

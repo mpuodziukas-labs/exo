@@ -46,8 +46,8 @@ class NodeSnapshot:
     exo_version: str
     python_version: str
     model_ids: list[str]
-    config_hash: str          # SHA-256 hex of json.dumps(ExoConfig.__dict__)
-    captured_at: float        # time.time()
+    config_hash: str  # SHA-256 hex of json.dumps(ExoConfig.__dict__)
+    captured_at: float  # time.time()
 
 
 @dataclass
@@ -56,9 +56,9 @@ class DriftReport:
 
     checked_at: float
     nodes_checked: int
-    drifted_fields: list[str]           # e.g. ["exo_version", "config_hash"]
-    consensus_value: dict[str, str]     # majority value per field
-    outlier_nodes: dict[str, list[str]] # node_id → list of fields where it differs
+    drifted_fields: list[str]  # e.g. ["exo_version", "config_hash"]
+    consensus_value: dict[str, str]  # majority value per field
+    outlier_nodes: dict[str, list[str]]  # node_id → list of fields where it differs
     is_drifted: bool
 
 
@@ -98,6 +98,7 @@ class DriftDetector:
         # --- exo version --------------------------------------------------
         try:
             from importlib.metadata import version as _ver
+
             exo_version = _ver("exo")
         except Exception:
             exo_version = "dev"
@@ -214,9 +215,7 @@ class DriftDetector:
                 },
             )
         else:
-            logger.debug(
-                f"[drift] cluster clean — {len(snapshots)} node(s) unanimous"
-            )
+            logger.debug(f"[drift] cluster clean — {len(snapshots)} node(s) unanimous")
 
         return report
 
@@ -228,6 +227,7 @@ class DriftDetector:
         """Register local snapshot and check drift every 60 s indefinitely."""
         # Derive a stable local node_id from the hostname.
         import socket
+
         local_node_id = socket.gethostname()
 
         logger.info(

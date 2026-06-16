@@ -8,6 +8,7 @@ emit_cluster_event, ADAPTIVE_HEALTH_INTERVAL) are all patched at the point of
 use via pytest monkeypatch or unittest.mock.patch, so each test controls
 exactly what the scorer sees without affecting other tests.
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -25,6 +26,7 @@ from exo.master.health_score import (
 # Pure helper tests: _lerp_score
 # ---------------------------------------------------------------------------
 
+
 class TestLerpScore:
     def test_at_or_below_perfect_returns_100(self) -> None:
         assert _lerp_score(300.0, perfect=300.0, zero=2000.0) == pytest.approx(100.0)
@@ -36,31 +38,39 @@ class TestLerpScore:
 
     def test_midpoint_returns_50(self) -> None:
         # midpoint of [300, 2000] is 1150
-        assert _lerp_score(1150.0, perfect=300.0, zero=2000.0) == pytest.approx(50.0, rel=1e-3)
+        assert _lerp_score(1150.0, perfect=300.0, zero=2000.0) == pytest.approx(
+            50.0, rel=1e-3
+        )
 
     def test_interpolation_is_linear(self) -> None:
         """quarter-point should give 75."""
         # 300 + (2000-300)*0.25 = 725 → score should be 75
-        assert _lerp_score(725.0, perfect=300.0, zero=2000.0) == pytest.approx(75.0, rel=1e-3)
+        assert _lerp_score(725.0, perfect=300.0, zero=2000.0) == pytest.approx(
+            75.0, rel=1e-3
+        )
 
 
 # ---------------------------------------------------------------------------
 # Pure helper tests: _assign_grade
 # ---------------------------------------------------------------------------
 
+
 class TestAssignGrade:
-    @pytest.mark.parametrize("score,expected", [
-        (95.0, "A"),
-        (90.0, "A"),
-        (89.9, "B"),
-        (75.0, "B"),
-        (74.9, "C"),
-        (60.0, "C"),
-        (59.9, "D"),
-        (40.0, "D"),
-        (39.9, "F"),
-        (0.0,  "F"),
-    ])
+    @pytest.mark.parametrize(
+        "score,expected",
+        [
+            (95.0, "A"),
+            (90.0, "A"),
+            (89.9, "B"),
+            (75.0, "B"),
+            (74.9, "C"),
+            (60.0, "C"),
+            (59.9, "D"),
+            (40.0, "D"),
+            (39.9, "F"),
+            (0.0, "F"),
+        ],
+    )
     def test_grade_bands(self, score: float, expected: str) -> None:
         assert _assign_grade(score) == expected
 
@@ -69,12 +79,14 @@ class TestAssignGrade:
 # ClusterHealthScorer.compute() with mocked singletons
 # ---------------------------------------------------------------------------
 
+
 class TestClusterHealthScorer:
     def _make_scorer(self) -> ClusterHealthScorer:
         return ClusterHealthScorer()
 
     def test_all_perfect_inputs_give_near_100(self) -> None:
         """When every factor returns 100 and weights sum to 1.0, overall = 100."""
+
         def perfect_factor(name: str, weight: float) -> HealthFactor:
             return HealthFactor(name=name, score=100.0, weight=weight, detail="perfect")
 

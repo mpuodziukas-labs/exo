@@ -43,10 +43,14 @@ def _controller(
 # ---------------------------------------------------------------------------
 
 
-def test_admit_when_all_pressures_below_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_admit_when_all_pressures_below_threshold(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Request is admitted when no threshold is breached."""
     ctrl = _controller(max_concurrent=16, monkeypatch=monkeypatch)
-    decision = ctrl.check(active_requests=5, memory_pressure=0.5, kv_cache_pressure=0.5, queue_depth=2)
+    decision = ctrl.check(
+        active_requests=5, memory_pressure=0.5, kv_cache_pressure=0.5, queue_depth=2
+    )
     assert decision.admitted is True
     assert decision.reason == "ok"
 
@@ -77,7 +81,9 @@ def test_boundary_just_below_concurrent_limit(monkeypatch: pytest.MonkeyPatch) -
 # ---------------------------------------------------------------------------
 
 
-def test_reject_on_memory_pressure_above_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reject_on_memory_pressure_above_threshold(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """memory_pressure > threshold rejects the request."""
     ctrl = _controller(memory_threshold=0.80, monkeypatch=monkeypatch)
     decision = ctrl.check(active_requests=0, memory_pressure=0.85)
@@ -86,7 +92,9 @@ def test_reject_on_memory_pressure_above_threshold(monkeypatch: pytest.MonkeyPat
     assert decision.retry_after_seconds == 5.0
 
 
-def test_memory_pressure_exactly_at_threshold_is_admitted(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_memory_pressure_exactly_at_threshold_is_admitted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Pressure exactly equal to threshold is NOT over the threshold — admitted."""
     ctrl = _controller(memory_threshold=0.90, monkeypatch=monkeypatch)
     decision = ctrl.check(active_requests=0, memory_pressure=0.90)
@@ -133,7 +141,9 @@ def test_queue_depth_at_limit_is_admitted(monkeypatch: pytest.MonkeyPatch) -> No
 # ---------------------------------------------------------------------------
 
 
-def test_concurrent_limit_takes_priority_over_memory(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_concurrent_limit_takes_priority_over_memory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """When both concurrent limit and memory are breached, concurrent fires first."""
     ctrl = _controller(max_concurrent=4, memory_threshold=0.5, monkeypatch=monkeypatch)
     decision = ctrl.check(active_requests=4, memory_pressure=0.9)
@@ -149,9 +159,9 @@ def test_concurrent_limit_takes_priority_over_memory(monkeypatch: pytest.MonkeyP
 def test_stats_counters_increment_correctly(monkeypatch: pytest.MonkeyPatch) -> None:
     """admitted_total and rejected_total stay accurate across multiple calls."""
     ctrl = _controller(max_concurrent=2, monkeypatch=monkeypatch)
-    ctrl.check(active_requests=0)   # admitted
-    ctrl.check(active_requests=0)   # admitted
-    ctrl.check(active_requests=2)   # rejected
+    ctrl.check(active_requests=0)  # admitted
+    ctrl.check(active_requests=0)  # admitted
+    ctrl.check(active_requests=2)  # rejected
 
     s = ctrl.stats()
     assert s["admitted_total"] == 2

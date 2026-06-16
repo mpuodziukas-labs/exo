@@ -93,7 +93,9 @@ class ResponseCache:
                 return None
             entry.touch()
             self._hits += 1
-            logger.debug(f"Response cache HIT key={cache_key[:8]} hits={entry.hit_count}")
+            logger.debug(
+                f"Response cache HIT key={cache_key[:8]} hits={entry.hit_count}"
+            )
             return entry
 
     def put(

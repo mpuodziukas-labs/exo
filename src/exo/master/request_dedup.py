@@ -164,7 +164,7 @@ DEDUP = RequestDeduplicator()
 # ---------------------------------------------------------------------------
 
 
-_DEFAULT_TTL = 300.0   # 5 minutes
+_DEFAULT_TTL = 300.0  # 5 minutes
 _MAX_ENTRIES = 10_000
 _CONTENT_HASH_BYTES = 32  # bytes
 

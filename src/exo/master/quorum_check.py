@@ -4,6 +4,7 @@ accepting inference requests. Default quorum = 1 (any single healthy worker).
 Configurable via EXO_QUORUM_MIN env var. If quorum not met, returns 503.
 Also tracks quorum history for observability.
 """
+
 from __future__ import annotations
 
 import os
@@ -45,7 +46,9 @@ class QuorumChecker:
         if met != self._met:
             if met:
                 lost_for = time.time() - self._lost_at if self._lost_at else 0
-                logger.info(f"Quorum RESTORED: healthy={healthy_workers} (lost for {lost_for:.1f}s)")
+                logger.info(
+                    f"Quorum RESTORED: healthy={healthy_workers} (lost for {lost_for:.1f}s)"
+                )
                 self._lost_at = None
             else:
                 logger.warning(
@@ -54,11 +57,13 @@ class QuorumChecker:
                 self._lost_at = time.time()
         self._healthy = healthy_workers
         self._met = met
-        self._history.append(QuorumSample(
-            timestamp=time.time(),
-            healthy_workers=healthy_workers,
-            quorum_met=met,
-        ))
+        self._history.append(
+            QuorumSample(
+                timestamp=time.time(),
+                healthy_workers=healthy_workers,
+                quorum_met=met,
+            )
+        )
 
     @property
     def quorum_met(self) -> bool:
@@ -92,7 +97,9 @@ class QuorumChecker:
 _DEFAULT_QUORUM_THRESHOLD: float = 0.5
 
 
-def quorum_met(total: int, alive: int, threshold: float = _DEFAULT_QUORUM_THRESHOLD) -> bool:
+def quorum_met(
+    total: int, alive: int, threshold: float = _DEFAULT_QUORUM_THRESHOLD
+) -> bool:
     """Return True if the fraction of alive nodes meets or exceeds threshold.
 
     Edge cases:

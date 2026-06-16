@@ -101,7 +101,11 @@ class AutoscaleTrigger:
         self._down_latency_streak: int = 0
 
         # Snapshot of admission stats from last check (for rejection-rate calc)
-        self._last_rejection_snapshot: dict[str, int] = {"rejected": 0, "total": 0, "ts": 0}
+        self._last_rejection_snapshot: dict[str, int] = {
+            "rejected": 0,
+            "total": 0,
+            "ts": 0,
+        }
 
     # ------------------------------------------------------------------
     # Internal helpers

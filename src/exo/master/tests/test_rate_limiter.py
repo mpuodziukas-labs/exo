@@ -9,6 +9,7 @@ Focuses on:
 - Stats counters (allowed / rejected / rejection_rate)
 - wait_time_seconds formula
 """
+
 from __future__ import annotations
 
 import os
@@ -21,6 +22,7 @@ from exo.master.rate_limiter import RateLimiter, TokenBucket
 # ---------------------------------------------------------------------------
 # TokenBucket unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestTokenBucketRefillMath:
     def test_full_bucket_allows_first_consume(self) -> None:
@@ -78,6 +80,7 @@ class TestTokenBucketRefillMath:
 # RateLimiter integration tests
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimiterPerClientIsolation:
     def test_separate_clients_dont_interfere(self) -> None:
         """Exhausting one client's bucket doesn't affect another's."""
@@ -95,7 +98,10 @@ class TestRateLimiterPerClientIsolation:
 
     def test_anonymous_uses_lower_rpm(self) -> None:
         """Anonymous bucket is created with the anonymous RPM, not the default."""
-        with patch.dict(os.environ, {"EXO_RATE_LIMIT_ANONYMOUS_RPM": "6", "EXO_RATE_LIMIT_RPM": "60"}):
+        with patch.dict(
+            os.environ,
+            {"EXO_RATE_LIMIT_ANONYMOUS_RPM": "6", "EXO_RATE_LIMIT_RPM": "60"},
+        ):
             rl = RateLimiter()
             bucket = rl._get_or_create_bucket("anonymous")
         # refill_rate = 6/60 = 0.1 tok/s

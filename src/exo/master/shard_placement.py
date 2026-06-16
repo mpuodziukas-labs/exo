@@ -11,6 +11,7 @@ Two-node (MacBook + Mini) behaviour
 * Link label: "remote_tb4" (TB4 / RDMA at 40 Gbps) for cross-node shards,
   "local" for shards that stay on the requesting node.
 """
+
 from __future__ import annotations
 
 import time
@@ -25,6 +26,7 @@ from exo.master.node_registry import NODE_REGISTRY, NodeCapability
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ShardPlacement:
@@ -47,6 +49,7 @@ class PlacementPlan:
 # ---------------------------------------------------------------------------
 # Optimizer
 # ---------------------------------------------------------------------------
+
 
 class ShardPlacementOptimizer:
     """Greedy, RAM-aware shard placement optimizer.
@@ -220,9 +223,7 @@ class ShardPlacementOptimizer:
         with self._lock:
             dropped = self._plans.pop(model_id, None)
         if dropped is not None:
-            logger.debug(
-                f"[shard_placement] invalidated cached plan for {model_id!r}"
-            )
+            logger.debug(f"[shard_placement] invalidated cached plan for {model_id!r}")
 
     def invalidate_all(self) -> None:
         """Drop all cached plans (e.g. after node topology change)."""

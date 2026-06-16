@@ -116,18 +116,14 @@ class EventBus:
         """Create and register a new per-subscriber queue."""
         queue: asyncio.Queue[ClusterEvent] = asyncio.Queue(maxsize=maxsize)
         self._subscribers.append(queue)
-        logger.debug(
-            f"[event_bus] subscriber added — total={len(self._subscribers)}"
-        )
+        logger.debug(f"[event_bus] subscriber added — total={len(self._subscribers)}")
         return queue
 
     def unsubscribe(self, queue: asyncio.Queue[ClusterEvent]) -> None:
         """Remove *queue* from the subscriber list (idempotent)."""
         with contextlib.suppress(ValueError):
             self._subscribers.remove(queue)
-        logger.debug(
-            f"[event_bus] subscriber removed — total={len(self._subscribers)}"
-        )
+        logger.debug(f"[event_bus] subscriber removed — total={len(self._subscribers)}")
 
     def history(self, since_timestamp: float = 0.0) -> list[ClusterEvent]:
         """Return all buffered events with timestamp > *since_timestamp*."""

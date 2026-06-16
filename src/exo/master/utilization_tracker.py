@@ -22,6 +22,7 @@ from loguru import logger
 
 try:
     import psutil as _psutil
+
     _HAS_PSUTIL = True
 except ImportError:
     _psutil = None  # type: ignore[assignment]
@@ -34,16 +35,16 @@ class UtilizationSample:
     node_id: str
     cpu_pct: float
     memory_pct: float
-    gpu_pct: float | None          # None when GPU metrics are unavailable
-    gpu_memory_gb: float | None    # None when GPU metrics are unavailable
+    gpu_pct: float | None  # None when GPU metrics are unavailable
+    gpu_memory_gb: float | None  # None when GPU metrics are unavailable
     timestamp: float = field(default_factory=time.time)
 
 
 class NodeUtilization:
     """Rolling window of utilization samples for a single node."""
 
-    _WINDOW_SIZE: int = 120   # 2 min at 1 Hz (sampled every 5 s → ~24 non-None readings)
-    _AVG_SAMPLES: int = 10    # number of most-recent samples used for averages
+    _WINDOW_SIZE: int = 120  # 2 min at 1 Hz (sampled every 5 s → ~24 non-None readings)
+    _AVG_SAMPLES: int = 10  # number of most-recent samples used for averages
 
     def __init__(self, node_id: str) -> None:
         self.node_id: str = node_id
@@ -95,15 +96,23 @@ class NodeUtilization:
             "sample_count": len(self._samples),
             "avg_cpu_pct": round(self.avg_cpu_pct, 2),
             "avg_memory_pct": round(self.avg_memory_pct, 2),
-            "avg_gpu_pct": round(self.avg_gpu_pct, 2) if self.avg_gpu_pct is not None else None,
+            "avg_gpu_pct": round(self.avg_gpu_pct, 2)
+            if self.avg_gpu_pct is not None
+            else None,
             "peak_cpu_pct": round(self.peak_cpu_pct, 2),
             "latest": {
                 "cpu_pct": round(latest.cpu_pct, 2),
                 "memory_pct": round(latest.memory_pct, 2),
-                "gpu_pct": round(latest.gpu_pct, 2) if latest.gpu_pct is not None else None,
-                "gpu_memory_gb": round(latest.gpu_memory_gb, 2) if latest.gpu_memory_gb is not None else None,
+                "gpu_pct": round(latest.gpu_pct, 2)
+                if latest.gpu_pct is not None
+                else None,
+                "gpu_memory_gb": round(latest.gpu_memory_gb, 2)
+                if latest.gpu_memory_gb is not None
+                else None,
                 "timestamp": latest.timestamp,
-            } if latest else None,
+            }
+            if latest
+            else None,
         }
 
 
@@ -182,7 +191,9 @@ class UtilizationTracker:
         # The output contains a line like:
         #   "PerformanceStatistics" = {"Device Utilization %"=42,"In use system memory"=1234567}
         # We find the PerformanceStatistics value blob and extract fields from it.
-        perf_match = re.search(r'"PerformanceStatistics"\s*=\s*\{([^}]+)\}', result.stdout)
+        perf_match = re.search(
+            r'"PerformanceStatistics"\s*=\s*\{([^}]+)\}', result.stdout
+        )
         if not perf_match:
             return None, None
 
@@ -191,7 +202,9 @@ class UtilizationTracker:
         gpu_pct: float | None = None
         gpu_memory_gb: float | None = None
 
-        util_match = re.search(r'"Device Utilization %"\s*=\s*([0-9]+(?:\.[0-9]+)?)', stats_blob)
+        util_match = re.search(
+            r'"Device Utilization %"\s*=\s*([0-9]+(?:\.[0-9]+)?)', stats_blob
+        )
         if util_match:
             gpu_pct = float(util_match.group(1))
 
@@ -229,21 +242,27 @@ class UtilizationTracker:
             "# TYPE exo_node_cpu_pct gauge",
         ]
         for node in self._nodes.values():
-            lines.append(f'exo_node_cpu_pct{{node_id="{node.node_id}"}} {node.avg_cpu_pct:.2f}')
+            lines.append(
+                f'exo_node_cpu_pct{{node_id="{node.node_id}"}} {node.avg_cpu_pct:.2f}'
+            )
 
         lines += [
             "# HELP exo_node_memory_pct Average memory utilisation over last 10 samples (percent)",
             "# TYPE exo_node_memory_pct gauge",
         ]
         for node in self._nodes.values():
-            lines.append(f'exo_node_memory_pct{{node_id="{node.node_id}"}} {node.avg_memory_pct:.2f}')
+            lines.append(
+                f'exo_node_memory_pct{{node_id="{node.node_id}"}} {node.avg_memory_pct:.2f}'
+            )
 
         lines += [
             "# HELP exo_node_peak_cpu_pct Peak CPU utilisation in rolling window (percent)",
             "# TYPE exo_node_peak_cpu_pct gauge",
         ]
         for node in self._nodes.values():
-            lines.append(f'exo_node_peak_cpu_pct{{node_id="{node.node_id}"}} {node.peak_cpu_pct:.2f}')
+            lines.append(
+                f'exo_node_peak_cpu_pct{{node_id="{node.node_id}"}} {node.peak_cpu_pct:.2f}'
+            )
 
         # GPU gauge — only emit when at least one sample has a value
         gpu_lines: list[str] = []

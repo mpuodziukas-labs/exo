@@ -35,7 +35,12 @@ _FLOAT_RANGES: list[tuple[str, float, float]] = [
 
 SCHEMA: dict[str, dict[str, Any]] = {
     "rate_limit_rpm_authenticated": {"type": "int", "min": 1, "max": 10000},
-    "rate_limit_rpm_anonymous": {"type": "int", "min": 1, "max": 1000, "constraint": "<= rate_limit_rpm_authenticated"},
+    "rate_limit_rpm_anonymous": {
+        "type": "int",
+        "min": 1,
+        "max": 1000,
+        "constraint": "<= rate_limit_rpm_authenticated",
+    },
     "ttft_slo_ms": {"type": "float", "min": 50.0, "max": 30000.0},
     "admission_max_concurrent": {"type": "int", "min": 1, "max": 1000},
     "canary_percent": {"type": "float", "min": 0.0, "max": 100.0},
@@ -54,20 +59,27 @@ class ConfigValidator:
         for field, lo, hi in _INT_RANGES:
             val = getattr(config, field)
             if not isinstance(val, int) or not (lo <= val <= hi):
-                errors.append(ValidationError(field, val, f"must be int in [{lo}, {hi}]"))
+                errors.append(
+                    ValidationError(field, val, f"must be int in [{lo}, {hi}]")
+                )
 
         for field, lo, hi in _FLOAT_RANGES:
             val = getattr(config, field)
             if not isinstance(val, (int, float)) or not (lo <= float(val) <= hi):
-                errors.append(ValidationError(field, val, f"must be float in [{lo}, {hi}]"))
+                errors.append(
+                    ValidationError(field, val, f"must be float in [{lo}, {hi}]")
+                )
 
         anon = config.rate_limit_rpm_anonymous
         auth = config.rate_limit_rpm_authenticated
         if isinstance(anon, int) and isinstance(auth, int) and anon > auth:
-            errors.append(ValidationError(
-                "rate_limit_rpm_anonymous", anon,
-                f"must be <= rate_limit_rpm_authenticated ({auth})"
-            ))
+            errors.append(
+                ValidationError(
+                    "rate_limit_rpm_anonymous",
+                    anon,
+                    f"must be <= rate_limit_rpm_authenticated ({auth})",
+                )
+            )
 
         return errors
 

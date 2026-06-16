@@ -11,6 +11,7 @@ Focuses on:
 - invalidate_model() removes entries for a specific model only
 - stats() hit_rate math
 """
+
 from __future__ import annotations
 
 import time
@@ -133,9 +134,9 @@ class TestResponseCacheGetPut:
     def test_stats_hit_rate_formula(self) -> None:
         cache = ResponseCache(max_entries=10)
         cache.put("k", "m", "{}", 1, 1)
-        cache.get("k")       # hit
-        cache.get("k")       # hit
-        cache.get("missing") # miss
+        cache.get("k")  # hit
+        cache.get("k")  # hit
+        cache.get("missing")  # miss
 
         s = cache.stats()
         assert s["hits"] == 2

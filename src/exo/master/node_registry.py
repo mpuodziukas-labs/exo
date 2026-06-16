@@ -3,6 +3,7 @@
 Each node advertises its RAM, compute capability, and loaded model shards.
 The master uses this for intelligent placement decisions.
 """
+
 from __future__ import annotations
 
 import platform
@@ -31,14 +32,15 @@ class NodeCapability:
     ram_available_gb: float
     compute_type: ComputeType
     compute_flops_tflops: float  # e.g. M1 Max ≈ 10.4, M4 ≈ 4.6
-    tb4_link: bool               # True if a Thunderbolt 4 interface is present
+    tb4_link: bool  # True if a Thunderbolt 4 interface is present
     loaded_models: list[str]
-    advertised_at: float         # unix timestamp (time.time())
+    advertised_at: float  # unix timestamp (time.time())
 
 
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class NodeRegistry:
     """Thread-safe in-memory store of per-node capabilities."""
@@ -78,7 +80,8 @@ class NodeRegistry:
         """Return the node with the most available RAM that can fit the model."""
         with self._lock:
             candidates = [
-                cap for cap in self._capabilities.values()
+                cap
+                for cap in self._capabilities.values()
                 if cap.ram_available_gb >= model_size_gb
             ]
         if not candidates:
@@ -120,9 +123,7 @@ class NodeRegistry:
 
     def total_cluster_flops_tflops(self) -> float:
         with self._lock:
-            return sum(
-                cap.compute_flops_tflops for cap in self._capabilities.values()
-            )
+            return sum(cap.compute_flops_tflops for cap in self._capabilities.values())
 
     def stats(self) -> dict[str, object]:
         """Return a serialisable summary of the registry — used by the API."""
@@ -174,9 +175,9 @@ _APPLE_SILICON_FLOPS: Final[dict[str, float]] = {
     "M4": 4.6,
 }
 
-_DEFAULT_APPLE_SILICON_FLOPS: Final[float] = 4.0   # conservative fallback
-_DEFAULT_CUDA_FLOPS: Final[float] = 10.0            # generic GPU placeholder
-_DEFAULT_CPU_FLOPS: Final[float] = 0.5              # typical AVX2 system
+_DEFAULT_APPLE_SILICON_FLOPS: Final[float] = 4.0  # conservative fallback
+_DEFAULT_CUDA_FLOPS: Final[float] = 10.0  # generic GPU placeholder
+_DEFAULT_CPU_FLOPS: Final[float] = 0.5  # typical AVX2 system
 
 
 def _sysctl(key: str) -> str:
@@ -198,8 +199,10 @@ def _detect_compute_type() -> ComputeType:
         return "apple_silicon"
     try:
         import importlib.util
+
         if importlib.util.find_spec("torch") is not None:
             import torch  # type: ignore[import-untyped]
+
             if torch.cuda.is_available():
                 return "cuda"
     except Exception as exc:
@@ -229,6 +232,7 @@ def _detect_flops(compute_type: ComputeType) -> float:
     if compute_type == "cuda":
         try:
             import torch  # type: ignore[import-untyped]
+
             props = torch.cuda.get_device_properties(0)
             # Rough FP16 estimate from SM count × 2 × clock
             sm_count: int = props.multi_processor_count
@@ -249,16 +253,16 @@ def _detect_ram_gb() -> tuple[float, float]:
         if raw:
             try:
                 total_bytes = int(raw)
-                total_gb = total_bytes / (1024 ** 3)
+                total_gb = total_bytes / (1024**3)
                 vm = psutil.virtual_memory()
-                available_gb = vm.available / (1024 ** 3)
+                available_gb = vm.available / (1024**3)
                 return round(total_gb, 2), round(available_gb, 2)
             except ValueError as exc:
                 logger.debug(f"[node_registry] sysctl memsize unparseable: {exc}")
     vm = psutil.virtual_memory()
     return (
-        round(vm.total / (1024 ** 3), 2),
-        round(vm.available / (1024 ** 3), 2),
+        round(vm.total / (1024**3), 2),
+        round(vm.available / (1024**3), 2),
     )
 
 
@@ -271,6 +275,7 @@ def _detect_tb4() -> bool:
     if platform.system() == "Darwin" and platform.machine() == "arm64":
         return True
     import psutil as _psutil
+
     interfaces = list(_psutil.net_if_addrs().keys())
     return any("thunderbolt" in iface.lower() for iface in interfaces)
 

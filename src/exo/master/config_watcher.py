@@ -35,6 +35,7 @@ from exo.master.config_version import CONFIG_VERSION
 # Config schema
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ExoConfig:
     rate_limit_rpm_authenticated: int = 60
@@ -65,6 +66,7 @@ def _load_from_dict(raw: dict[str, Any]) -> ExoConfig:
 # ConfigWatcher
 # ---------------------------------------------------------------------------
 
+
 class ConfigWatcher:
     def __init__(
         self,
@@ -87,13 +89,18 @@ class ConfigWatcher:
     def load(self) -> ExoConfig:
         """Read config file and return a fresh ExoConfig merged with defaults."""
         from exo.master.config_validator import CONFIG_VALIDATOR
+
         try:
             raw: dict[str, Any] = json.loads(self._config_path.read_text())
         except FileNotFoundError:
-            logger.warning(f"[config_watcher] {self._config_path} not found; using defaults")
+            logger.warning(
+                f"[config_watcher] {self._config_path} not found; using defaults"
+            )
             return ExoConfig()
         except json.JSONDecodeError as exc:
-            logger.error(f"[config_watcher] JSON parse error: {exc}; keeping current config")
+            logger.error(
+                f"[config_watcher] JSON parse error: {exc}; keeping current config"
+            )
             return self._config
         raw = CONFIG_VERSION.migrate(raw)
         candidate = _load_from_dict(raw)
@@ -101,7 +108,9 @@ class ConfigWatcher:
         if errors:
             for err in errors:
                 logger.warning(f"[config_watcher] validation error: {err}")
-            logger.warning("[config_watcher] config rejected — keeping previous valid config")
+            logger.warning(
+                "[config_watcher] config rejected — keeping previous valid config"
+            )
             return self._config
         return candidate
 
@@ -132,7 +141,9 @@ class ConfigWatcher:
             self._config_path.parent.mkdir(parents=True, exist_ok=True)
             default = ExoConfig()
             self._config_path.write_text(json.dumps(asdict(default), indent=2))
-            logger.info(f"[config_watcher] created default config at {self._config_path}")
+            logger.info(
+                f"[config_watcher] created default config at {self._config_path}"
+            )
         cfg = self.load()
         try:
             self._last_mtime = self._config_path.stat().st_mtime
@@ -164,8 +175,10 @@ class ConfigWatcher:
     def _broadcast_async(self, cfg: ExoConfig) -> None:
         """Schedule a broadcast to peer nodes on the running event loop (best-effort)."""
         import dataclasses
+
         try:
             from exo.master.config_broadcast import CONFIG_BROADCASTER
+
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 loop.create_task(  # type: ignore[unused-coroutine]
@@ -205,6 +218,7 @@ class ConfigWatcher:
     def _apply(self, cfg: ExoConfig) -> None:  # noqa: C901 (acceptable length)
         """Push every config field to the relevant singleton."""
         from exo.master.config_validator import CONFIG_VALIDATOR
+
         try:
             CONFIG_VALIDATOR.validate_and_raise(cfg)
         except ValueError as exc:
@@ -213,6 +227,7 @@ class ConfigWatcher:
         # ---- Rate limiter -----------------------------------------------
         try:
             from exo.master.rate_limiter import RATE_LIMITER
+
             RATE_LIMITER._authenticated_rpm = cfg.rate_limit_rpm_authenticated
             RATE_LIMITER._anonymous_rpm = cfg.rate_limit_rpm_anonymous
             logger.debug(
@@ -225,6 +240,7 @@ class ConfigWatcher:
         # ---- SLO tracker ------------------------------------------------
         try:
             from exo.master.slo_tracker import SLO_TRACKER
+
             SLO_TRACKER._slo_threshold = cfg.ttft_slo_ms
             logger.debug(f"[config_watcher] slo_tracker threshold={cfg.ttft_slo_ms}ms")
         except Exception as exc:
@@ -233,6 +249,7 @@ class ConfigWatcher:
         # ---- Admission controller ---------------------------------------
         try:
             from exo.master.admission_control import ADMISSION_CONTROLLER
+
             ADMISSION_CONTROLLER._max_concurrent_requests = cfg.admission_max_concurrent
             logger.debug(
                 f"[config_watcher] admission_controller max_concurrent={cfg.admission_max_concurrent}"
@@ -243,6 +260,7 @@ class ConfigWatcher:
         # ---- Canary router ----------------------------------------------
         try:
             from exo.master.canary import CANARY_ROUTER
+
             CANARY_ROUTER.canary_percent = int(cfg.canary_percent)
             CANARY_ROUTER.canary_model = cfg.canary_model
             CANARY_ROUTER.enabled = bool(cfg.canary_model)
@@ -256,13 +274,18 @@ class ConfigWatcher:
         # ---- Circuit breakers -------------------------------------------
         try:
             from exo.master.circuit_breaker import CIRCUIT_BREAKERS
+
             with CIRCUIT_BREAKERS._lock:
                 for breaker in CIRCUIT_BREAKERS._breakers.values():
                     breaker.failure_threshold = cfg.circuit_breaker_failure_threshold
                     breaker.cooldown_seconds = cfg.circuit_breaker_cooldown_seconds
             # Also update defaults for breakers created in future
-            CIRCUIT_BREAKERS._default_failure_threshold = cfg.circuit_breaker_failure_threshold
-            CIRCUIT_BREAKERS._default_cooldown_seconds = cfg.circuit_breaker_cooldown_seconds
+            CIRCUIT_BREAKERS._default_failure_threshold = (
+                cfg.circuit_breaker_failure_threshold
+            )
+            CIRCUIT_BREAKERS._default_cooldown_seconds = (
+                cfg.circuit_breaker_cooldown_seconds
+            )
             logger.debug(
                 f"[config_watcher] circuit_breakers failure_threshold="
                 f"{cfg.circuit_breaker_failure_threshold} "
@@ -276,6 +299,7 @@ class ConfigWatcher:
             from exo.worker.runner.llm_inference.checkpoint_manager import (
                 CHECKPOINT_MANAGER,
             )
+
             CHECKPOINT_MANAGER.checkpoint_every_n_tokens = cfg.checkpoint_every_n_tokens
             logger.debug(
                 f"[config_watcher] checkpoint_manager every_n_tokens={cfg.checkpoint_every_n_tokens}"
@@ -288,6 +312,7 @@ class ConfigWatcher:
         # ---- Request recorder -------------------------------------------
         try:
             from exo.master.request_recorder import RECORDER
+
             RECORDER.sample_rate = cfg.record_rate
             logger.debug(f"[config_watcher] recorder sample_rate={cfg.record_rate}")
         except Exception as exc:
@@ -296,6 +321,7 @@ class ConfigWatcher:
         # ---- Request deduplicator ---------------------------------------
         try:
             from exo.master.request_dedup import DEDUP
+
             DEDUP._ttl_seconds = cfg.dedup_ttl_seconds
             logger.debug(f"[config_watcher] dedup ttl={cfg.dedup_ttl_seconds}s")
         except Exception as exc:
@@ -304,6 +330,7 @@ class ConfigWatcher:
         # ---- Quorum checker ---------------------------------------------
         try:
             from exo.master.quorum_check import QUORUM_CHECKER
+
             QUORUM_CHECKER._min_quorum = cfg.quorum_min
             logger.info(f"[config_watcher] quorum_checker min_quorum={cfg.quorum_min}")
         except Exception as exc:

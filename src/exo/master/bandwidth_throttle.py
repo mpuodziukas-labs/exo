@@ -25,9 +25,9 @@ _MAX_WAIT_SECONDS: float = 5.0
 @dataclass
 class BandwidthBucket:
     node_id: str
-    capacity_mbps: float           # bucket ceiling == refill rate
-    current_tokens: float          # bytes available right now
-    last_refill: float             # monotonic timestamp of last refill
+    capacity_mbps: float  # bucket ceiling == refill rate
+    current_tokens: float  # bytes available right now
+    last_refill: float  # monotonic timestamp of last refill
     bytes_throttled: int = field(default=0)  # cumulative bytes that had to wait
 
     # capacity in bytes
@@ -68,7 +68,7 @@ class BandwidthThrottler:
             self._buckets[node_id] = BandwidthBucket(
                 node_id=node_id,
                 capacity_mbps=limit,
-                current_tokens=cap_bytes,   # start full
+                current_tokens=cap_bytes,  # start full
                 last_refill=time.monotonic(),
             )
             logger.info(
@@ -121,7 +121,7 @@ class BandwidthThrottler:
 
             # Not enough tokens — compute wait.
             deficit = bytes_to_send - bucket.current_tokens
-            wait = deficit / cap_bytes   # seconds
+            wait = deficit / cap_bytes  # seconds
             wait = min(wait, _MAX_WAIT_SECONDS)
             bucket.bytes_throttled += bytes_to_send
             logger.debug(
@@ -166,7 +166,11 @@ class BandwidthThrottler:
             result: dict[str, object] = {}
             for node_id, bucket in self._buckets.items():
                 cap = bucket._capacity_bytes
-                util = max(0.0, min(1.0, 1.0 - bucket.current_tokens / cap)) if cap else 0.0
+                util = (
+                    max(0.0, min(1.0, 1.0 - bucket.current_tokens / cap))
+                    if cap
+                    else 0.0
+                )
                 result[node_id] = {
                     "limit_mbps": bucket.capacity_mbps,
                     "utilization": round(util, 4),
@@ -184,7 +188,11 @@ class BandwidthThrottler:
         with self._lock:
             for node_id, bucket in self._buckets.items():
                 cap = bucket._capacity_bytes
-                util = max(0.0, min(1.0, 1.0 - bucket.current_tokens / cap)) if cap else 0.0
+                util = (
+                    max(0.0, min(1.0, 1.0 - bucket.current_tokens / cap))
+                    if cap
+                    else 0.0
+                )
                 lines.append(f'exo_bw_utilization{{node="{node_id}"}} {util:.6f}')
         return "\n".join(lines) + "\n"
 

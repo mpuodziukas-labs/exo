@@ -3,6 +3,7 @@ Per-model inference profiler: tracks TTFT (time-to-first-token), TPS
 (tokens-per-second), and total latency per model. Maintains rolling
 p50/p99 statistics over the last 100 requests per model.
 """
+
 from __future__ import annotations
 
 import time
@@ -37,9 +38,9 @@ class ModelProfile:
 
     def record(self, ttft_ms: float, tokens: int, total_ms: float) -> None:
         tps = (tokens / max(total_ms, 1)) * 1000
-        self._samples.append(InferenceSample(
-            ttft_ms=ttft_ms, tps=tps, total_ms=total_ms, tokens=tokens
-        ))
+        self._samples.append(
+            InferenceSample(ttft_ms=ttft_ms, tps=tps, total_ms=total_ms, tokens=tokens)
+        )
 
     def to_dict(self) -> dict[str, Any]:
         if not self._samples:
@@ -63,7 +64,9 @@ class ModelProfiler:
     def __init__(self) -> None:
         self._profiles: dict[str, ModelProfile] = {}
 
-    def record(self, model_id: str, ttft_ms: float, tokens: int, total_ms: float) -> None:
+    def record(
+        self, model_id: str, ttft_ms: float, tokens: int, total_ms: float
+    ) -> None:
         if model_id not in self._profiles:
             self._profiles[model_id] = ModelProfile(model_id)
             logger.debug(f"[model_profiler] new profile created for model={model_id}")

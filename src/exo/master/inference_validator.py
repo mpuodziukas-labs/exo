@@ -4,6 +4,7 @@ Checks for: empty response, truncated JSON (when JSON mode requested),
 repetition loops, excessive whitespace, and null byte contamination.
 Logs issues but only blocks on critical failures (null bytes, empty).
 """
+
 from __future__ import annotations
 
 import re
@@ -12,15 +13,15 @@ from typing import Any
 
 from loguru import logger
 
-_MAX_REPETITION_WINDOW = 50    # chars
-_REPETITION_THRESHOLD = 5      # times the same window repeated = loop
+_MAX_REPETITION_WINDOW = 50  # chars
+_REPETITION_THRESHOLD = 5  # times the same window repeated = loop
 
 
 @dataclass
 class ValidationResult:
     valid: bool
     issues: list[str]
-    critical: bool = False    # if True, response should not be sent
+    critical: bool = False  # if True, response should not be sent
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -35,7 +36,7 @@ def _detect_repetition_loop(text: str) -> bool:
     if len(text) < _MAX_REPETITION_WINDOW * _REPETITION_THRESHOLD:
         return False
     # Check last portion of text for repetition
-    tail = text[-_MAX_REPETITION_WINDOW * _REPETITION_THRESHOLD:]
+    tail = text[-_MAX_REPETITION_WINDOW * _REPETITION_THRESHOLD :]
     window = tail[:_MAX_REPETITION_WINDOW]
     escaped = re.escape(window)
     matches = re.findall(escaped, tail)
@@ -93,7 +94,7 @@ class InferenceValidator:
             logger.log(
                 level.upper(),
                 f"InferenceValidator: issues={issues} critical={critical} "
-                f"text_len={len(text)}"
+                f"text_len={len(text)}",
             )
         if critical:
             self._total_critical += 1

@@ -15,6 +15,7 @@ Integration with ``SLOBudgetTracker``:
   to ``ClientSLOThrottle.observe(client_id, violated)`` to keep both
   components in sync.
 """
+
 from __future__ import annotations
 
 import time
@@ -24,18 +25,20 @@ from typing import Any
 
 from loguru import logger
 
-_VIOLATION_WINDOW_S: float = 60.0      # sliding window for counting violations
-_VIOLATION_THRESHOLD: int = 5          # violations in window → throttle
-_THROTTLE_MIN_GAP_S: float = 10.0     # throttled client: min seconds between requests
-_THROTTLE_DURATION_S: float = 120.0   # how long the throttle lasts
+_VIOLATION_WINDOW_S: float = 60.0  # sliding window for counting violations
+_VIOLATION_THRESHOLD: int = 5  # violations in window → throttle
+_THROTTLE_MIN_GAP_S: float = 10.0  # throttled client: min seconds between requests
+_THROTTLE_DURATION_S: float = 120.0  # how long the throttle lasts
 
 
 @dataclass
 class _ClientRecord:
     client_id: str
     violation_timestamps: deque[float] = field(default_factory=lambda: deque())
-    throttle_until: float = 0.0           # epoch; 0 = not throttled
-    last_allowed_at: float = 0.0          # last time a request was let through (for rate-limiting)
+    throttle_until: float = 0.0  # epoch; 0 = not throttled
+    last_allowed_at: float = (
+        0.0  # last time a request was let through (for rate-limiting)
+    )
     total_violations: int = 0
     total_throttled_requests: int = 0
 
@@ -58,8 +61,11 @@ class _ClientRecord:
             "total_violations": self.total_violations,
             "throttled": self.is_throttled(),
             "throttle_until": self.throttle_until if self.is_throttled() else None,
-            "throttle_remaining_s": max(0.0, round(self.throttle_until - time.time(), 2))
-                if self.is_throttled() else 0.0,
+            "throttle_remaining_s": max(
+                0.0, round(self.throttle_until - time.time(), 2)
+            )
+            if self.is_throttled()
+            else 0.0,
             "total_throttled_requests": self.total_throttled_requests,
         }
 
@@ -115,7 +121,10 @@ class ClientSLOThrottle:
             record.throttle_until = now + _THROTTLE_DURATION_S
             logger.warning(
                 "ClientSLOThrottle: throttling client={} (violations={} in {}s) for {}s",
-                client_id, recent, _VIOLATION_WINDOW_S, _THROTTLE_DURATION_S,
+                client_id,
+                recent,
+                _VIOLATION_WINDOW_S,
+                _THROTTLE_DURATION_S,
             )
 
     def check_allowed(self, client_id: str) -> tuple[bool, str]:
@@ -140,7 +149,8 @@ class ClientSLOThrottle:
             record.last_allowed_at = now
             logger.debug(
                 "ClientSLOThrottle: throttled client={} allowed (gap={:.1f}s)",
-                client_id, gap,
+                client_id,
+                gap,
             )
             return True, "throttled_but_allowed"
 
@@ -152,7 +162,8 @@ class ClientSLOThrottle:
         )
         logger.debug(
             "ClientSLOThrottle: throttled client={} BLOCKED retry_in={}s",
-            client_id, remaining,
+            client_id,
+            remaining,
         )
         return False, reason
 
@@ -176,7 +187,9 @@ class ClientSLOThrottle:
             "tracked_clients": len(all_c),
             "throttled_clients": sum(1 for c in all_c if c["throttled"]),
             "total_violations": sum(c["total_violations"] for c in all_c),
-            "total_throttled_requests": sum(c["total_throttled_requests"] for c in all_c),
+            "total_throttled_requests": sum(
+                c["total_throttled_requests"] for c in all_c
+            ),
             "violation_window_s": _VIOLATION_WINDOW_S,
             "violation_threshold": _VIOLATION_THRESHOLD,
             "throttle_duration_s": _THROTTLE_DURATION_S,

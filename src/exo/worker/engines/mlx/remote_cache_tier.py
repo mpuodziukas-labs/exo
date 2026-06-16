@@ -115,9 +115,15 @@ def _deserialize(data: bytes) -> tuple[mx.array, KVCacheType]:
             keys = _read_array(buf)
             values = _read_array(buf)
             offset = _unpack1(">I", buf, 4)
-            object.__setattr__(layer, "keys", keys) if hasattr(type(layer), "__slots__") else setattr(layer, "keys", keys)
-            object.__setattr__(layer, "values", values) if hasattr(type(layer), "__slots__") else setattr(layer, "values", values)
-            object.__setattr__(layer, "offset", offset) if hasattr(type(layer), "__slots__") else setattr(layer, "offset", offset)
+            object.__setattr__(layer, "keys", keys) if hasattr(
+                type(layer), "__slots__"
+            ) else setattr(layer, "keys", keys)
+            object.__setattr__(layer, "values", values) if hasattr(
+                type(layer), "__slots__"
+            ) else setattr(layer, "values", values)
+            object.__setattr__(layer, "offset", offset) if hasattr(
+                type(layer), "__slots__"
+            ) else setattr(layer, "offset", offset)
         reconstructed.append(layer)
     prompt_tokens = _read_array(buf)
     return prompt_tokens, cast(KVCacheType, reconstructed)
@@ -144,8 +150,12 @@ def _prefix_length(prompt: mx.array, cached: mx.array) -> int:
 
 @runtime_checkable
 class RemoteCacheTierProtocol(Protocol):
-    def store_async(self, entry_id: str, prompt_tokens: mx.array, cache: KVCacheType) -> None: ...
-    def fetch(self, prompt_tokens: mx.array, _model: Model) -> tuple[KVCacheType, int] | None: ...
+    def store_async(
+        self, entry_id: str, prompt_tokens: mx.array, cache: KVCacheType
+    ) -> None: ...
+    def fetch(
+        self, prompt_tokens: mx.array, _model: Model
+    ) -> tuple[KVCacheType, int] | None: ...
     def remove(self, entry_id: str) -> None: ...
 
 
@@ -155,11 +165,15 @@ class TieredRemoteCache:
     def __init__(self, tiers: list[RemoteCacheTier]) -> None:
         self._tiers = tiers  # ordered highest priority first
 
-    def store_async(self, entry_id: str, prompt_tokens: mx.array, cache: KVCacheType) -> None:
+    def store_async(
+        self, entry_id: str, prompt_tokens: mx.array, cache: KVCacheType
+    ) -> None:
         for tier in self._tiers:
             tier.store_async(entry_id, prompt_tokens, cache)
 
-    def fetch(self, prompt_tokens: mx.array, _model: Model) -> tuple[KVCacheType, int] | None:
+    def fetch(
+        self, prompt_tokens: mx.array, _model: Model
+    ) -> tuple[KVCacheType, int] | None:
         for tier in self._tiers:
             result = tier.fetch(prompt_tokens, _model)
             if result is not None:
@@ -184,13 +198,19 @@ class LiveTieredRemoteCache:
         self._lock = threading.RLock()
         self._tiers: list[RemoteCacheTier] = [RemoteCacheTier(u) for u in initial_urls]
         self._last_mtime: float = 0.0
-        self._thread = threading.Thread(target=self._poll_loop, daemon=True, name="cache-url-watcher")
+        self._thread = threading.Thread(
+            target=self._poll_loop, daemon=True, name="cache-url-watcher"
+        )
         self._thread.start()
 
     @classmethod
     def from_env(cls) -> "LiveTieredRemoteCache":
         """Build from EXO_REMOTE_CACHE_URLS / EXO_IPAD_CACHE_URL env vars."""
-        raw = os.environ.get("EXO_REMOTE_CACHE_URLS") or os.environ.get("EXO_IPAD_CACHE_URL") or ""
+        raw = (
+            os.environ.get("EXO_REMOTE_CACHE_URLS")
+            or os.environ.get("EXO_IPAD_CACHE_URL")
+            or ""
+        )
         urls = [u.strip() for u in raw.split(",") if u.strip()]
         return cls(urls)
 
@@ -216,13 +236,17 @@ class LiveTieredRemoteCache:
         except Exception as exc:
             logger.debug(f"Cache URL file reload failed: {exc}")
 
-    def store_async(self, entry_id: str, prompt_tokens: mx.array, cache: KVCacheType) -> None:
+    def store_async(
+        self, entry_id: str, prompt_tokens: mx.array, cache: KVCacheType
+    ) -> None:
         with self._lock:
             tiers = list(self._tiers)
         for tier in tiers:
             tier.store_async(entry_id, prompt_tokens, cache)
 
-    def fetch(self, prompt_tokens: mx.array, _model: Model) -> tuple[KVCacheType, int] | None:
+    def fetch(
+        self, prompt_tokens: mx.array, _model: Model
+    ) -> tuple[KVCacheType, int] | None:
         with self._lock:
             tiers = list(self._tiers)
         for tier in tiers:
@@ -359,13 +383,17 @@ class RemoteCacheTier:
                     for raw_entry in entries_raw:
                         if not isinstance(raw_entry, dict):
                             continue
-                        entry_dict: dict[str, object] = cast(dict[str, object], raw_entry)
+                        entry_dict: dict[str, object] = cast(
+                            dict[str, object], raw_entry
+                        )
                         parsed_entries.append(
                             _IndexEntry(
                                 id=str(entry_dict.get("id", "")),
                                 token_count=int(entry_dict.get("token_count") or 0),  # type: ignore[arg-type]
                                 stored_at=float(entry_dict.get("stored_at") or 0.0),  # type: ignore[arg-type]
-                                prompt_tokens_hex=str(entry_dict.get("prompt_tokens_hex", "")),
+                                prompt_tokens_hex=str(
+                                    entry_dict.get("prompt_tokens_hex", "")
+                                ),
                             )
                         )
                     self._index = parsed_entries
@@ -390,9 +418,7 @@ class RemoteCacheTier:
                 }
                 for e in self._index
             ]
-            self._index_path.write_text(
-                json.dumps({"entries": serialised}, indent=2)
-            )
+            self._index_path.write_text(json.dumps({"entries": serialised}, indent=2))
         except Exception as exc:
             logger.debug(f"Remote cache index save failed: {exc}")
 
@@ -420,7 +446,9 @@ class RemoteCacheTier:
                     method="PUT",
                 )
                 req.add_header("Content-Type", "application/octet-stream")
-                with cast(HTTPResponse, urllib.request.urlopen(req, timeout=self._timeout_s)):
+                with cast(
+                    HTTPResponse, urllib.request.urlopen(req, timeout=self._timeout_s)
+                ):
                     pass
 
                 token_count = int(prompt_tokens.shape[0])
@@ -474,9 +502,7 @@ class RemoteCacheTier:
                 continue
             try:
                 token_bytes = bytes.fromhex(entry.prompt_tokens_hex)
-                cached_tokens = mx.array(
-                    np.frombuffer(token_bytes, dtype=np.int32)
-                )
+                cached_tokens = mx.array(np.frombuffer(token_bytes, dtype=np.int32))
                 length = _prefix_length(prompt_tokens, cached_tokens)
                 if length > best_length:
                     best_length = length
@@ -492,7 +518,9 @@ class RemoteCacheTier:
             req = urllib.request.Request(
                 f"{self._base_url}/blob/{best_entry.id}", method="GET"
             )
-            with cast(HTTPResponse, urllib.request.urlopen(req, timeout=self._timeout_s)) as resp:
+            with cast(
+                HTTPResponse, urllib.request.urlopen(req, timeout=self._timeout_s)
+            ) as resp:
                 data: bytes = resp.read()
             _prompt_tokens, cache = _deserialize(data)
             self._record_success()
@@ -508,7 +536,9 @@ class RemoteCacheTier:
             req = urllib.request.Request(
                 f"{self._base_url}/blob/{entry_id}", method="DELETE"
             )
-            with cast(HTTPResponse, urllib.request.urlopen(req, timeout=self._timeout_s)):
+            with cast(
+                HTTPResponse, urllib.request.urlopen(req, timeout=self._timeout_s)
+            ):
                 pass
         except Exception as exc:
             logger.debug("Remote blob DELETE failed for %s: %s", entry_id, exc)

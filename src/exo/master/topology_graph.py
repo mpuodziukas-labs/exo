@@ -74,6 +74,7 @@ class TopologyGraph:
 # Builder
 # ---------------------------------------------------------------------------
 
+
 class TopologyGraphBuilder:
     """Assembles a TopologyGraph from live singleton data sources."""
 
@@ -114,7 +115,9 @@ class TopologyGraphBuilder:
         all_ids: set[str] = set(registry_caps.keys()) | alive_ids
 
         if not all_ids:
-            logger.warning("[topology_graph] no nodes found in registry or heartbeat monitor")
+            logger.warning(
+                "[topology_graph] no nodes found in registry or heartbeat monitor"
+            )
             return []
 
         # Master = node with highest flops among registry entries;
@@ -162,16 +165,18 @@ class TopologyGraphBuilder:
             label = cap.hostname if cap else node_id[:12]
             model_ids = list(cap.loaded_models) if cap else []
 
-            nodes.append(GraphNode(
-                id=node_id,
-                label=label,
-                type=node_type,
-                cpu_pct=round(cpu_pct, 1),
-                memory_pct=round(memory_pct, 1),
-                gpu_pct=round(gpu_pct, 1) if gpu_pct is not None else None,
-                health=health,
-                model_ids=model_ids,
-            ))
+            nodes.append(
+                GraphNode(
+                    id=node_id,
+                    label=label,
+                    type=node_type,
+                    cpu_pct=round(cpu_pct, 1),
+                    memory_pct=round(memory_pct, 1),
+                    gpu_pct=round(gpu_pct, 1) if gpu_pct is not None else None,
+                    health=health,
+                    model_ids=model_ids,
+                )
+            )
 
         return nodes
 
@@ -195,19 +200,23 @@ class TopologyGraphBuilder:
             edge_health: str = stats["status"] if stats else "unknown"
 
             link_type: LinkType = (
-                "tb4" if throughput_mbps > _TB4_THRESHOLD_MBPS else
-                "ethernet" if throughput_mbps > 0 else
-                "unknown"
+                "tb4"
+                if throughput_mbps > _TB4_THRESHOLD_MBPS
+                else "ethernet"
+                if throughput_mbps > 0
+                else "unknown"
             )
 
-            edges.append(GraphEdge(
-                source=source_id,
-                target=target_id,
-                latency_ms=round(latency_ms, 2),
-                throughput_mbps=round(throughput_mbps, 2),
-                link_type=link_type,
-                health=edge_health,
-            ))
+            edges.append(
+                GraphEdge(
+                    source=source_id,
+                    target=target_id,
+                    latency_ms=round(latency_ms, 2),
+                    throughput_mbps=round(throughput_mbps, 2),
+                    link_type=link_type,
+                    health=edge_health,
+                )
+            )
 
         return edges
 
@@ -259,6 +268,7 @@ class TopologyGraphBuilder:
     def render_html(self) -> str:
         """Render a self-contained dark-theme D3 force-directed graph HTML page."""
         import json as _json
+
         data = self.to_d3_json()
         data_json = _json.dumps(data, indent=2)
 
@@ -512,9 +522,11 @@ sim.on('tick', () => {{
         for e in graph.edges:
             bandwidth_gbps = round(e.throughput_mbps / 1_000.0, 3)
             edge_type: str = (
-                "thunderbolt" if e.link_type == "tb4" else
-                "ethernet" if e.link_type == "ethernet" else
-                "wifi"
+                "thunderbolt"
+                if e.link_type == "tb4"
+                else "ethernet"
+                if e.link_type == "ethernet"
+                else "wifi"
             )
             vis_edges.append(
                 {
