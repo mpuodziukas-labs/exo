@@ -123,6 +123,7 @@ def mlx_distributed_init(
 
                 # Diagnostic: test TCP connectivity to neighbor before C++ ring init
                 import socket as _socket
+
                 for _h in hosts_for_node:
                     if _h.ip not in ("0.0.0.0", "198.51.100.1"):
                         _s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
@@ -132,7 +133,9 @@ def mlx_distributed_init(
                             logger.info(f"PRE-RING TCP OK: {_h.ip}:{_h.port}")
                             _s.close()
                         except Exception as _e:
-                            logger.warning(f"PRE-RING TCP FAIL: {_h.ip}:{_h.port} errno={getattr(_e,'errno','?')} {_e}")
+                            logger.warning(
+                                f"PRE-RING TCP FAIL: {_h.ip}:{_h.port} errno={getattr(_e, 'errno', '?')} {_e}"
+                            )
 
                 group = mx.distributed.init(backend="ring", strict=True)
 

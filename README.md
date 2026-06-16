@@ -1,3 +1,12 @@
+> **Operational-hardening fork of [exo-explore/exo](https://github.com/exo-explore/exo).**
+> 33 additive commits on top of upstream `main` — no rewritten history. Adds an ops-primitives
+> library under `src/exo/master/` (resilience, traffic control, observability, placement) plus
+> engine fixes: synchronous placement validation, error surfacing on placement/inference failures,
+> and a configurable libp2p listen port. 266 passing behavioral tests, `ruff` clean.
+> See [HARDENING.md](HARDENING.md) for the full changelog. Upstream README follows below.
+
+---
+
 <div align="center">
 
 <picture>
