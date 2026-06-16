@@ -1,6 +1,6 @@
 # Distributed-Systems Hardening — Production Fork
 
-33 commits on top of upstream `main` (07598a3a). All code tested: **266 passing behavioral tests** (188 added here), `ruff` clean.
+33 hardening commits on top of upstream `main` (07598a3a). All code tested: **266 passing behavioral tests** (188 added here), `ruff` clean.
 
 ## Engine fixes
 - **Synchronous placement validation** (`api`): `POST /place_instance` dry-runs placement against the API's state replica and returns `400` for requests the topology can never satisfy — previously accepted silently and failed asynchronously with no client signal.
