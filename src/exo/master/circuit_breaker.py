@@ -135,11 +135,37 @@ class CircuitBreakerRegistry:
     def __init__(self) -> None:
         self._breakers: dict[str, CircuitBreaker] = {}
         self._lock = Lock()
+        self._default_failure_threshold: int = 5
+        self._default_cooldown_seconds: float = 30.0
+
+    def configure(
+        self,
+        *,
+        failure_threshold: int | None = None,
+        cooldown_seconds: float | None = None,
+    ) -> None:
+        """Update failure_threshold/cooldown for all existing breakers and
+        set the defaults used by breakers created afterwards (e.g. from
+        hot-reloaded config)."""
+        with self._lock:
+            if failure_threshold is not None:
+                self._default_failure_threshold = failure_threshold
+            if cooldown_seconds is not None:
+                self._default_cooldown_seconds = cooldown_seconds
+            for breaker in self._breakers.values():
+                if failure_threshold is not None:
+                    breaker.failure_threshold = failure_threshold
+                if cooldown_seconds is not None:
+                    breaker.cooldown_seconds = cooldown_seconds
 
     def get(self, worker_id: str) -> CircuitBreaker:
         with self._lock:
             if worker_id not in self._breakers:
-                self._breakers[worker_id] = CircuitBreaker(worker_id=worker_id)
+                self._breakers[worker_id] = CircuitBreaker(
+                    worker_id=worker_id,
+                    failure_threshold=self._default_failure_threshold,
+                    cooldown_seconds=self._default_cooldown_seconds,
+                )
             return self._breakers[worker_id]
 
     def allow_request(self, worker_id: str) -> bool:

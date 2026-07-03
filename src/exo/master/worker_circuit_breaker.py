@@ -50,8 +50,8 @@ class WorkerCircuitBreaker:
     open_duration_seconds: float = 30.0
 
     state: WorkerCircuitState = field(default=WorkerCircuitState.CLOSED)
-    _failure_timestamps: deque[float] = field(default_factory=deque)
-    _opened_at: float = field(default=0.0)
+    failure_timestamps: deque[float] = field(default_factory=deque)
+    opened_at: float = field(default=0.0)
     _lock: Lock = field(default_factory=Lock)
 
     # Observability counters
@@ -67,12 +67,12 @@ class WorkerCircuitBreaker:
     def _prune_window(self, now: float) -> None:
         """Remove failure timestamps older than the rolling window."""
         cutoff = now - self.failure_window_seconds
-        while self._failure_timestamps and self._failure_timestamps[0] < cutoff:
-            self._failure_timestamps.popleft()
+        while self.failure_timestamps and self.failure_timestamps[0] < cutoff:
+            self.failure_timestamps.popleft()
 
     def _failures_in_window(self, now: float) -> int:
         self._prune_window(now)
-        return len(self._failure_timestamps)
+        return len(self.failure_timestamps)
 
     # ---------------------------------------------------------------------------
     # Public API
@@ -87,7 +87,7 @@ class WorkerCircuitBreaker:
                 return True
 
             if self.state == WorkerCircuitState.OPEN:
-                if now - self._opened_at >= self.open_duration_seconds:
+                if now - self.opened_at >= self.open_duration_seconds:
                     self.state = WorkerCircuitState.HALF_OPEN
                     return True  # one probe request
                 return False
@@ -103,7 +103,7 @@ class WorkerCircuitBreaker:
             if self.state == WorkerCircuitState.HALF_OPEN:
                 # Probe succeeded → close the circuit
                 self.state = WorkerCircuitState.CLOSED
-                self._failure_timestamps.clear()
+                self.failure_timestamps.clear()
 
     def record_failure(self) -> None:
         """Record a worker crash/error."""
@@ -111,21 +111,21 @@ class WorkerCircuitBreaker:
             now = time.monotonic()
             self.total_requests += 1
             self.total_failures += 1
-            self._failure_timestamps.append(now)
+            self.failure_timestamps.append(now)
             self._prune_window(now)
 
             if self.state == WorkerCircuitState.HALF_OPEN:
                 # Probe failed → reopen
                 self.state = WorkerCircuitState.OPEN
-                self._opened_at = now
+                self.opened_at = now
                 return
 
             if (
                 self.state == WorkerCircuitState.CLOSED
-                and len(self._failure_timestamps) >= self.failure_threshold
+                and len(self.failure_timestamps) >= self.failure_threshold
             ):
                 self.state = WorkerCircuitState.OPEN
-                self._opened_at = now
+                self.opened_at = now
                 self.total_trips += 1
 
     @property
@@ -139,7 +139,7 @@ class WorkerCircuitBreaker:
             return {
                 "worker_id": self.worker_id,
                 "state": self.state.value,
-                "failures_in_window": len(self._failure_timestamps),
+                "failures_in_window": len(self.failure_timestamps),
                 "failure_threshold": self.failure_threshold,
                 "failure_window_seconds": self.failure_window_seconds,
                 "open_duration_seconds": self.open_duration_seconds,

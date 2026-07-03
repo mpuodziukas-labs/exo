@@ -12,7 +12,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from loguru import logger
 
@@ -42,7 +42,7 @@ class RunbookStep:
     path: str = ""
     body: dict[str, Any] = field(default_factory=dict)
     sleep_s: float = 0.0
-    fn: Callable[[], Any] | None = None
+    fn: Callable[[], object] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -160,7 +160,7 @@ class RunbookExecutor:
     def register(
         self,
         runbook_or_name: "Runbook | str",
-        steps: list[Any] | None = None,
+        steps: list[object] | None = None,
         trigger: str = "manual",
         description: str = "",
         priority: RunbookPriority = RunbookPriority.P2,
@@ -292,7 +292,7 @@ class RunbookExecutor:
                     elif step.step_type == StepType.CALLABLE and step.fn is not None:
                         result = step.fn()
                         if asyncio.iscoroutine(result):
-                            result = await result
+                            result = cast(object, await result)
                         sr.output = str(result) if result is not None else "ok"
                         sr.success = True
                     elif step.step_type == StepType.SLEEP:

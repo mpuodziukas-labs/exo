@@ -62,7 +62,7 @@ class AdaptiveTimeoutCalculator:
         return max(_MIN_TIMEOUT_S, min(_MAX_TIMEOUT_S, base * multiplier))
 
     def all_timeouts(self) -> list[dict[str, Any]]:
-        results = []
+        results: list[dict[str, Any]] = []
         for model_id in self._samples:
             p99 = self._p99(model_id)
             results.append(

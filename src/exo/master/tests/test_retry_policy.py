@@ -130,6 +130,7 @@ def test_none_status_retries_when_not_timeout() -> None:
 def test_delay_respects_max_delay() -> None:
     """next_delay_ms never exceeds max_delay_ms + jitter ceiling (100 ms)."""
     mgr = _mgr(base_delay_ms=1000.0, max_delay_ms=500.0, backoff_factor=4.0)
+    delay = 0.0
     for _ in range(5):
         delay = mgr.next_delay_ms("t-delay")
     # raw = 1000 * 4^5 >> 500; capped at 500; plus up to 100 jitter
@@ -157,9 +158,9 @@ def test_clear_removes_trace_from_active() -> None:
     """clear() removes the trace from active tracking."""
     mgr = _mgr()
     mgr.record_attempt("t-clr", 503, "err")
-    assert "t-clr" in mgr._active
+    assert mgr.is_active("t-clr")
     mgr.clear("t-clr")
-    assert "t-clr" not in mgr._active
+    assert not mgr.is_active("t-clr")
 
 
 def test_stats_track_total_retries() -> None:

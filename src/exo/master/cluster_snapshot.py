@@ -10,7 +10,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -84,10 +84,10 @@ class ClusterSnapshotManager:
         snapshots = sorted(
             _SNAPSHOT_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
         )
-        result = []
+        result: list[dict[str, Any]] = []
         for p in snapshots[:_MAX_SNAPSHOTS]:
             try:
-                data = json.loads(p.read_text())
+                data = cast(dict[str, Any], json.loads(p.read_text()))
                 result.append(
                     {
                         "filename": p.name,
@@ -104,7 +104,7 @@ class ClusterSnapshotManager:
         if not path.exists():
             return None
         try:
-            return json.loads(path.read_text())
+            return cast(dict[str, Any], json.loads(path.read_text()))
         except Exception as exc:
             logger.warning(f"ClusterSnapshot load failed {filename}: {exc}")
             return None
