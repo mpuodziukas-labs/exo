@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import importlib
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -62,7 +62,7 @@ class SingletonHealthChecker:
         for module_path, attr, required_attrs in _SINGLETONS:
             try:
                 mod = importlib.import_module(module_path)
-                obj = getattr(mod, attr, None)
+                obj = cast(object, getattr(mod, attr, None))
                 if obj is None:
                     results.append(
                         SingletonHealth(

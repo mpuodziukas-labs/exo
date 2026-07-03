@@ -41,6 +41,10 @@ class QuorumChecker:
         self._lost_at: float | None = None
         logger.info(f"Quorum checker: min_quorum={min_quorum}")
 
+    def configure(self, *, min_quorum: int) -> None:
+        """Override the minimum quorum (e.g. from hot-reloaded config)."""
+        self._min_quorum = min_quorum
+
     def update(self, healthy_workers: int) -> None:
         met = healthy_workers >= self._min_quorum
         if met != self._met:

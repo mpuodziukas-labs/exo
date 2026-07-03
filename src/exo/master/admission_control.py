@@ -30,9 +30,16 @@ class AdmissionController:
         self._lock = Lock()
         self._rejected_total: int = 0
         self._admitted_total: int = 0
+        self._max_concurrent_requests: int | None = None
+
+    def configure(self, *, max_concurrent_requests: int) -> None:
+        """Override max_concurrent (e.g. from hot-reloaded config)."""
+        self._max_concurrent_requests = max_concurrent_requests
 
     @property
     def max_concurrent(self) -> int:
+        if self._max_concurrent_requests is not None:
+            return self._max_concurrent_requests
         return int(os.getenv("EXO_MAX_CONCURRENT_REQUESTS", "16"))
 
     @property

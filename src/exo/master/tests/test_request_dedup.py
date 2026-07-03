@@ -16,6 +16,7 @@ Focuses on:
 from __future__ import annotations
 
 import asyncio
+import math
 import time
 from unittest.mock import patch
 
@@ -96,21 +97,14 @@ class TestRequestDedupCache:
 
     def test_lru_eviction_at_capacity(self) -> None:
         """When cache is full, the oldest entry is evicted on next register."""
-        from exo.master import request_dedup as _mod
-
-        original_max = _mod._MAX_ENTRIES
-        try:
-            _mod._MAX_ENTRIES = 3
-            cache = RequestDedup()
-            cache.register("k1", "h1", 200)
-            cache.register("k2", "h2", 200)
-            cache.register("k3", "h3", 200)
-            # Adding k4 should evict k1 (oldest/LRU)
-            cache.register("k4", "h4", 200)
-            assert cache.check("k1") is None
-            assert cache.check("k4") is not None
-        finally:
-            _mod._MAX_ENTRIES = original_max
+        cache = RequestDedup(max_entries=3)
+        cache.register("k1", "h1", 200)
+        cache.register("k2", "h2", 200)
+        cache.register("k3", "h3", 200)
+        # Adding k4 should evict k1 (oldest/LRU)
+        cache.register("k4", "h4", 200)
+        assert cache.check("k1") is None
+        assert cache.check("k4") is not None
 
     def test_stats_hit_rate(self) -> None:
         cache = RequestDedup()
@@ -120,7 +114,8 @@ class TestRequestDedupCache:
         s = cache.stats()
         assert s["hits"] == 1
         assert s["misses"] == 1
-        assert s["hit_rate"] == pytest.approx(0.5)
+        assert isinstance(s["hit_rate"], float)
+        assert math.isclose(s["hit_rate"], 0.5, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_content_hash_uses_first_512_bytes(self) -> None:
         body = b"x" * 600
@@ -187,10 +182,11 @@ class TestRequestDeduplicator:
             dedup = RequestDeduplicator()
             await dedup.get_or_create("key-exp", "trace-1")
             # Simulate expiry by backdating the entry's created_at
-            entry = dedup._entries["key-exp"]
+            entry = dedup.get_entry("key-exp")
+            assert entry is not None
             entry.created_at = time.monotonic() - 9999.0
             count = dedup.cleanup_expired()
             assert count == 1
-            assert "key-exp" not in dedup._entries
+            assert dedup.get_entry("key-exp") is None
 
         asyncio.run(run())

@@ -116,11 +116,14 @@ class Master:
     async def _command_processor(self) -> None:
         with self.command_receiver as commands:
             async for forwarder_command in commands:
+                # Bound unconditionally before the try block so the except
+                # clause below can always reference it (was previously
+                # assigned inside the try, making it reportPossiblyUnbound).
+                command = forwarder_command.command
                 try:
-                    logger.info(f"Executing command: {forwarder_command.command}")
+                    logger.info(f"Executing command: {command}")
 
                     generated_events: list[Event] = []
-                    command = forwarder_command.command
                     instance_task_counts: dict[InstanceId, int] = {}
                     match command:
                         case TestCommand():

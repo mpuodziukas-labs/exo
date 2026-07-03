@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
 
@@ -9,6 +10,11 @@ from loguru import logger
 
 _BATCH_TIMEOUT = 60.0  # seconds per item
 _MAX_BATCH_SIZE = 32
+
+# async callable(messages, model, max_tokens, temperature) -> generated text
+InferenceFn = Callable[
+    [list[dict[str, Any]], str, int, float], Coroutine[Any, Any, str]
+]
 
 
 @dataclass
@@ -61,7 +67,7 @@ class BatchInferenceHandler:
     async def run_batch(
         self,
         items: list[BatchItem],
-        inference_fn: Any,  # async callable(messages, model, max_tokens, temperature) -> str
+        inference_fn: InferenceFn,
     ) -> list[BatchResult]:
         if len(items) > _MAX_BATCH_SIZE:
             raise ValueError(f"Batch size {len(items)} exceeds max {_MAX_BATCH_SIZE}")

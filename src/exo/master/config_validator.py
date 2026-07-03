@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from exo.master.config_watcher import ExoConfig
 
@@ -9,7 +9,7 @@ from exo.master.config_watcher import ExoConfig
 @dataclass
 class ValidationError:
     field: str
-    value: Any
+    value: object
     reason: str
 
     def __str__(self) -> str:
@@ -57,22 +57,22 @@ class ConfigValidator:
         errors: list[ValidationError] = []
 
         for field, lo, hi in _INT_RANGES:
-            val = getattr(config, field)
-            if not isinstance(val, int) or not (lo <= val <= hi):
+            val = cast(int, getattr(config, field))
+            if not (lo <= val <= hi):
                 errors.append(
                     ValidationError(field, val, f"must be int in [{lo}, {hi}]")
                 )
 
         for field, lo, hi in _FLOAT_RANGES:
-            val = getattr(config, field)
-            if not isinstance(val, (int, float)) or not (lo <= float(val) <= hi):
+            fval = cast(float, getattr(config, field))
+            if not (lo <= float(fval) <= hi):
                 errors.append(
-                    ValidationError(field, val, f"must be float in [{lo}, {hi}]")
+                    ValidationError(field, fval, f"must be float in [{lo}, {hi}]")
                 )
 
         anon = config.rate_limit_rpm_anonymous
         auth = config.rate_limit_rpm_authenticated
-        if isinstance(anon, int) and isinstance(auth, int) and anon > auth:
+        if anon > auth:
             errors.append(
                 ValidationError(
                     "rate_limit_rpm_anonymous",
