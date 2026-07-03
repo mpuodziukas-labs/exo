@@ -3,10 +3,12 @@
 import time
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from uuid import uuid4
 
 from loguru import logger
+
+JobStatus = Literal["pending", "running", "done", "cancelled"]
 
 
 @dataclass
@@ -31,7 +33,7 @@ class BatchJob:
     created_at: float
     completed: int = 0
     failed: int = 0
-    status: Literal["pending", "running", "done", "cancelled"] = "pending"
+    status: JobStatus = "pending"
 
 
 InferenceFn = Callable[
@@ -51,13 +53,19 @@ class BatchProcessor:
         batch_items: list[BatchItem] = []
         for raw in items:
             item_id: str = raw.get("custom_id") or str(uuid4())
-            messages: list[dict[str, Any]] = raw.get("messages", [])
-            if not isinstance(messages, list) or not messages:
+            messages_raw = cast(object, raw.get("messages", []))
+            if not isinstance(messages_raw, list) or not messages_raw:
                 raise ValueError(f"item {item_id!r}: messages must be a non-empty list")
-            model: str = raw.get("model", "")
+            messages: list[dict[str, Any]] = cast(
+                list[dict[str, Any]], messages_raw
+            )
+            model: str = str(cast(object, raw.get("model", "")))
             if not model:
                 raise ValueError(f"item {item_id!r}: model is required")
-            temperature: float = float(raw.get("temperature") or 0.0)
+            temperature_raw = cast(float | int | str | None, raw.get("temperature"))
+            temperature: float = (
+                float(temperature_raw) if temperature_raw is not None else 0.0
+            )
             max_tokens: int | None = raw.get("max_tokens")
             if max_tokens is not None:
                 max_tokens = int(max_tokens)
@@ -117,7 +125,10 @@ class BatchProcessor:
         job.status = "running"
         logger.info(f"[batch] starting job_id={job_id} items={len(job.items)}")
         for item in job.items:
-            if job.status == "cancelled":
+            # job.status may be mutated concurrently by cancel_job() across
+            # this loop's `await` points — cast defeats pyright's (incorrect,
+            # single-frame) narrowing so the live re-check isn't optimized away.
+            if cast(JobStatus, job.status) == "cancelled":
                 break
             if item.status != "pending":
                 continue
@@ -144,7 +155,7 @@ class BatchProcessor:
                 )
             finally:
                 item.completed_at = time.time()
-        if job.status != "cancelled":
+        if cast(JobStatus, job.status) != "cancelled":
             job.status = "done"
         logger.info(
             f"[batch] finished job_id={job_id} completed={job.completed} failed={job.failed}"

@@ -15,6 +15,7 @@ Focuses on:
 from __future__ import annotations
 
 import time
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -58,13 +59,13 @@ class TestMakeKey:
         assert key is not None
 
     def test_same_inputs_produce_identical_key(self) -> None:
-        msgs = [{"role": "user", "content": "test"}]
+        msgs: list[dict[str, Any]] = [{"role": "user", "content": "test"}]
         k1 = ResponseCache.make_key("m", msgs, 0.0, 50, 0.95, None)
         k2 = ResponseCache.make_key("m", msgs, 0.0, 50, 0.95, None)
         assert k1 == k2
 
     def test_different_models_produce_different_keys(self) -> None:
-        msgs: list[dict] = []
+        msgs: list[dict[str, Any]] = []
         k1 = ResponseCache.make_key("model-a", msgs, 0.0, None, 1.0, None)
         k2 = ResponseCache.make_key("model-b", msgs, 0.0, None, 1.0, None)
         assert k1 != k2
@@ -94,7 +95,7 @@ class TestResponseCacheGetPut:
             result = cache.get("expiring")
         assert result is None
         # Entry must have been deleted
-        assert "expiring" not in cache._cache
+        assert not cache.has_entry("expiring")
 
     def test_lru_eviction_removes_oldest_created_at(self) -> None:
         cache = ResponseCache(max_entries=2, default_ttl_seconds=600.0)
@@ -115,7 +116,8 @@ class TestResponseCacheGetPut:
     def test_custom_ttl_overrides_default(self) -> None:
         cache = ResponseCache(max_entries=10, default_ttl_seconds=300.0)
         cache.put("custom", "m", "{}", 1, 1, ttl_seconds=10.0)
-        entry = cache._cache["custom"]
+        entry = cache.peek("custom")
+        assert entry is not None
         assert entry.ttl_seconds == pytest.approx(10.0)
 
     def test_invalidate_model_removes_only_target_model(self) -> None:

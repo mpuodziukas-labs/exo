@@ -69,7 +69,7 @@ class TestEndpointErrorBudgetMath:
             eb.record(success=False)
         # If alert had fired, _budget_alert_sent would be True
         # The guard prevents firing, so it stays False even with 100% errors
-        assert eb._budget_alert_sent is False
+        assert eb.budget_alert_sent is False
 
     def test_alert_sent_flag_resets_when_budget_recovers(self) -> None:
         """_budget_alert_sent resets to False once error rate drops below 50% of budget.
@@ -88,7 +88,7 @@ class TestEndpointErrorBudgetMath:
                 eb.record(success=True)
             eb.record(success=False)  # 10% error → flag set
 
-        assert eb._budget_alert_sent is True
+        assert eb.budget_alert_sent is True
 
         # Fast-forward past window (3600 s) so old samples are evicted
         t_new = t_start + 3700.0
@@ -97,7 +97,7 @@ class TestEndpointErrorBudgetMath:
             for _ in range(10):
                 eb.record(success=True)
 
-        assert eb._budget_alert_sent is False
+        assert eb.budget_alert_sent is False
 
     def test_rolling_window_excludes_old_samples(self) -> None:
         """Samples older than _WINDOW_SECONDS are trimmed from calculations."""

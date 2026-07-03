@@ -55,8 +55,8 @@ def test_failures_outside_window_do_not_trip() -> None:
 
     old_time = time.monotonic() - 20.0  # well outside 10s window
     # Inject a stale timestamp directly
-    wcb._failure_timestamps.append(old_time)
-    wcb._failure_timestamps.append(old_time)
+    wcb.failure_timestamps.append(old_time)
+    wcb.failure_timestamps.append(old_time)
     # These two old failures should be pruned; adding one fresh failure stays below threshold
     wcb.record_failure()
     assert wcb.state == WorkerCircuitState.CLOSED  # 1 in-window < threshold=3
@@ -109,20 +109,20 @@ def test_probe_success_closes_circuit() -> None:
     """A successful probe in HALF_OPEN closes the circuit and clears history."""
     wcb = _make_wcb(failure_threshold=1, open_duration_seconds=0.0)
     wcb.record_failure()  # → OPEN
-    wcb._opened_at = 0.0  # force cooldown expired
+    wcb.opened_at = 0.0  # force cooldown expired
 
     wcb.allow_request()  # → HALF_OPEN
     wcb.record_success()  # → CLOSED
 
     assert wcb.state == WorkerCircuitState.CLOSED
-    assert len(wcb._failure_timestamps) == 0
+    assert len(wcb.failure_timestamps) == 0
 
 
 def test_probe_failure_reopens_circuit() -> None:
     """A failed probe in HALF_OPEN re-opens the circuit."""
     wcb = _make_wcb(failure_threshold=1, open_duration_seconds=0.0)
     wcb.record_failure()  # → OPEN
-    wcb._opened_at = 0.0
+    wcb.opened_at = 0.0
 
     wcb.allow_request()  # → HALF_OPEN
     wcb.record_failure()  # → OPEN

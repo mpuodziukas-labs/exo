@@ -9,22 +9,33 @@ from __future__ import annotations
 
 import gzip
 import threading
-from typing import Final
+from typing import Any, Final, Protocol, cast
 
 from loguru import logger
 
+
+class _BrotliModule(Protocol):
+    """Static shape for the optional `brotli`/`brotlicffi` module.
+
+    Neither package ships type stubs, so basedpyright can't infer anything
+    about the module beyond "unresolved import" — this Protocol pins the one
+    call this file makes.
+    """
+
+    def compress(self, data: bytes, quality: int = ...) -> bytes: ...
+
+
 try:
     import brotli as _brotli  # type: ignore[import-untyped]
-
-    _BROTLI_AVAILABLE: bool = True
 except ImportError:
-    _brotli = None  # type: ignore[assignment]
-    _BROTLI_AVAILABLE = False
+    _brotli = None
+
+_BROTLI_AVAILABLE: Final[bool] = _brotli is not None
 
 _MIN_COMPRESS_BYTES: Final[int] = 1024
 
 
-def _compress_response(body: bytes, accept_encoding: str) -> tuple[bytes, str]:
+def compress_response(body: bytes, accept_encoding: str) -> tuple[bytes, str]:
     """Compress *body* using the best algorithm the client advertises.
 
     Algorithm selection priority: brotli > gzip > identity.
@@ -37,9 +48,10 @@ def _compress_response(body: bytes, accept_encoding: str) -> tuple[bytes, str]:
     if len(body) <= _MIN_COMPRESS_BYTES:
         return body, "identity"
 
-    if _BROTLI_AVAILABLE and "br" in accept_encoding:
+    if _BROTLI_AVAILABLE and "br" in accept_encoding and _brotli is not None:
         try:
-            compressed = _brotli.compress(body, quality=4)
+            brotli_mod = cast(_BrotliModule, cast(Any, _brotli))
+            compressed = brotli_mod.compress(body, quality=4)
             return compressed, "br"
         except Exception as exc:  # noqa: BLE001
             logger.debug(f"[compression] brotli failed, falling back to gzip: {exc}")
