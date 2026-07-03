@@ -103,6 +103,11 @@ class SloTracker:
     def __init__(self) -> None:
         self._clients: dict[str, ClientSloStats] = {}
         self._lock = Lock()
+        self._slo_threshold_ms: float = _TTFT_SLO_MS
+
+    def configure(self, *, slo_threshold_ms: float) -> None:
+        """Override the TTFT SLO threshold (e.g. from hot-reloaded config)."""
+        self._slo_threshold_ms = slo_threshold_ms
 
     def record(
         self, client_key: str, ttft_ms: float, total_ms: float, tokens: int
@@ -121,10 +126,11 @@ class SloTracker:
             clients = list(self._clients.values())
         return [c.to_dict() for c in clients]
 
-    def violating_clients(self, ttft_slo_ms: float = _TTFT_SLO_MS) -> list[str]:
+    def violating_clients(self, ttft_slo_ms: float | None = None) -> list[str]:
+        threshold = self._slo_threshold_ms if ttft_slo_ms is None else ttft_slo_ms
         with self._lock:
             clients = list(self._clients.values())
-        return [c.client_key for c in clients if not c.check_slo(ttft_slo_ms)]
+        return [c.client_key for c in clients if not c.check_slo(threshold)]
 
     def summary(self) -> dict[str, Any]:
         with self._lock:
@@ -137,7 +143,7 @@ class SloTracker:
                 "global_p50_total_ms": 0.0,
                 "global_p99_total_ms": 0.0,
                 "total_violations": 0,
-                "slo_ms": _TTFT_SLO_MS,
+                "slo_ms": self._slo_threshold_ms,
             }
         all_ttft = sorted(s.ttft_ms for c in clients for s in c.samples)
         all_total = sorted(s.total_ms for c in clients for s in c.samples)
@@ -158,7 +164,7 @@ class SloTracker:
                 all_total[min(int(n_total * 0.99), n_total - 1)] if n_total else 0.0, 2
             ),
             "total_violations": sum(c.violations for c in clients),
-            "slo_ms": _TTFT_SLO_MS,
+            "slo_ms": self._slo_threshold_ms,
         }
 
 

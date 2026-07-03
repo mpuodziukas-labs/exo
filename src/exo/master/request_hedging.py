@@ -21,10 +21,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import os
+from collections.abc import Coroutine
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 
 from loguru import logger
+
+T = TypeVar("T")
 
 
 @dataclass
@@ -62,6 +65,20 @@ class HedgingController:
     # Public API
     # ------------------------------------------------------------------
 
+    @property
+    def enabled(self) -> bool:
+        """Whether hedging is currently enabled."""
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        self._enabled = value
+
+    @property
+    def p95_latency_ms(self) -> float:
+        """The current stored P95 latency reference (ms)."""
+        return self._p95_latency_ms
+
     def should_hedge(self, trace_id: str) -> bool:
         """Return True when hedging is enabled. Streaming requests must NOT hedge."""
         return self._enabled
@@ -74,10 +91,10 @@ class HedgingController:
 
     async def run_with_hedge(
         self,
-        primary_coro: Any,
-        hedge_coro: Any,
+        primary_coro: Coroutine[Any, Any, T],
+        hedge_coro: Coroutine[Any, Any, T],
         delay_ms: float,
-    ) -> tuple[Any, str]:
+    ) -> tuple[T, str]:
         """
         Race primary_coro against hedge_coro (fired after delay_ms).
 
@@ -88,13 +105,13 @@ class HedgingController:
         """
         self._stats.total_hedged += 1
 
-        primary_task: asyncio.Task[Any] = asyncio.ensure_future(primary_coro)
+        primary_task: asyncio.Task[T] = asyncio.ensure_future(primary_coro)
 
-        async def _fire_hedge() -> Any:
+        async def _fire_hedge() -> T:
             await asyncio.sleep(delay_ms / 1000.0)
             return await hedge_coro
 
-        hedge_wrapper: asyncio.Task[Any] = asyncio.ensure_future(_fire_hedge())
+        hedge_wrapper: asyncio.Task[T] = asyncio.ensure_future(_fire_hedge())
 
         try:
             done, pending = await asyncio.wait(

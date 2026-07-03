@@ -12,7 +12,7 @@ Focuses on:
 
 from __future__ import annotations
 
-import pytest
+import math
 
 from exo.master.slo_tracker import ClientSloStats, SloTracker
 
@@ -35,20 +35,22 @@ class TestClientSloStatsPercentiles:
         for v in [100.0, 200.0, 300.0, 400.0, 500.0]:  # 5 samples
             stats.add_sample(ttft_ms=v, total_ms=v, tokens=10)
         # sorted: [100, 200, 300, 400, 500]  int(5*0.50)=2 → 300
-        assert stats.p50_ttft_ms == pytest.approx(300.0)
+        assert math.isclose(stats.p50_ttft_ms, 300.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_p99_ttft_clamps_to_last_index(self) -> None:
         """With 5 samples, int(5*0.99)=4 → last element."""
         stats = ClientSloStats("c2")
         for v in [10.0, 20.0, 30.0, 40.0, 999.0]:
             stats.add_sample(ttft_ms=v, total_ms=v, tokens=5)
-        assert stats.p99_ttft_ms == pytest.approx(999.0)
+        assert math.isclose(stats.p99_ttft_ms, 999.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_avg_tokens_per_request(self) -> None:
         stats = ClientSloStats("avg_test")
         stats.add_sample(ttft_ms=100.0, total_ms=200.0, tokens=10)
         stats.add_sample(ttft_ms=100.0, total_ms=200.0, tokens=20)
-        assert stats.avg_tokens_per_request == pytest.approx(15.0)
+        assert math.isclose(
+            stats.avg_tokens_per_request, 15.0, rel_tol=1e-6, abs_tol=1e-12
+        )
 
     def test_slo_passes_when_p99_under_threshold(self) -> None:
         stats = ClientSloStats("ok_client")
@@ -115,7 +117,8 @@ class TestSloTrackerAggregation:
         assert s["client_count"] == 2
         # int(100 * 0.99) = 99 → 99th out of 100 sorted values
         # sorted: 50×100 then 50×900 → index 99 = 900
-        assert s["global_p99_ttft_ms"] == pytest.approx(900.0)
+        assert isinstance(s["global_p99_ttft_ms"], float)
+        assert math.isclose(s["global_p99_ttft_ms"], 900.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_violating_clients_returns_correct_subset(self) -> None:
         tracker = SloTracker()

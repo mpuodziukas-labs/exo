@@ -13,10 +13,9 @@ Focuses on:
 
 from __future__ import annotations
 
+import math
 import time
 from unittest.mock import patch
-
-import pytest
 
 from exo.master.error_budget import EndpointErrorBudget, ErrorBudgetManager
 
@@ -27,8 +26,10 @@ class TestEndpointErrorBudgetMath:
         for _ in range(20):
             eb.record(success=True)
         d = eb.to_dict()
-        assert d["error_rate_pct"] == pytest.approx(0.0)
-        assert d["budget_consumed_pct"] == pytest.approx(0.0)
+        assert isinstance(d["error_rate_pct"], float)
+        assert isinstance(d["budget_consumed_pct"], float)
+        assert math.isclose(d["error_rate_pct"], 0.0, rel_tol=1e-6, abs_tol=1e-12)
+        assert math.isclose(d["budget_consumed_pct"], 0.0, rel_tol=1e-6, abs_tol=1e-12)
         assert d["slo_met"] is True
 
     def test_budget_consumed_pct_formula(self) -> None:
@@ -40,8 +41,10 @@ class TestEndpointErrorBudgetMath:
         for _ in range(5):
             eb.record(success=False)
         d = eb.to_dict()
-        assert d["error_rate_pct"] == pytest.approx(0.05, rel=1e-3)
-        assert d["budget_consumed_pct"] == pytest.approx(50.0, rel=1e-3)
+        assert isinstance(d["error_rate_pct"], float)
+        assert isinstance(d["budget_consumed_pct"], float)
+        assert math.isclose(d["error_rate_pct"], 0.05, rel_tol=1e-3, abs_tol=1e-12)
+        assert math.isclose(d["budget_consumed_pct"], 50.0, rel_tol=1e-3, abs_tol=1e-12)
 
     def test_slo_violated_above_0_1_percent_errors(self) -> None:
         """error_rate > 0.1% means SLO not met."""
@@ -59,7 +62,10 @@ class TestEndpointErrorBudgetMath:
         for _ in range(10):
             eb.record(success=False)  # 100% errors → consumed = 10000%, capped 100
         d = eb.to_dict()
-        assert d["budget_consumed_pct"] == pytest.approx(100.0)
+        assert isinstance(d["budget_consumed_pct"], float)
+        assert math.isclose(
+            d["budget_consumed_pct"], 100.0, rel_tol=1e-6, abs_tol=1e-12
+        )
 
     def test_no_alert_below_min_samples(self) -> None:
         """Budget alert is suppressed when fewer than 10 samples recorded."""
@@ -69,7 +75,7 @@ class TestEndpointErrorBudgetMath:
             eb.record(success=False)
         # If alert had fired, _budget_alert_sent would be True
         # The guard prevents firing, so it stays False even with 100% errors
-        assert eb._budget_alert_sent is False
+        assert eb.budget_alert_sent is False
 
     def test_alert_sent_flag_resets_when_budget_recovers(self) -> None:
         """_budget_alert_sent resets to False once error rate drops below 50% of budget.
@@ -88,7 +94,7 @@ class TestEndpointErrorBudgetMath:
                 eb.record(success=True)
             eb.record(success=False)  # 10% error → flag set
 
-        assert eb._budget_alert_sent is True
+        assert eb.budget_alert_sent is True
 
         # Fast-forward past window (3600 s) so old samples are evicted
         t_new = t_start + 3700.0
@@ -97,7 +103,7 @@ class TestEndpointErrorBudgetMath:
             for _ in range(10):
                 eb.record(success=True)
 
-        assert eb._budget_alert_sent is False
+        assert eb.budget_alert_sent is False
 
     def test_rolling_window_excludes_old_samples(self) -> None:
         """Samples older than _WINDOW_SECONDS are trimmed from calculations."""

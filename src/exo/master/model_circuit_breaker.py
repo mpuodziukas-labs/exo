@@ -50,7 +50,7 @@ class ModelCircuit:
             self.state == CircuitState.HALF_OPEN
             and self.success_streak >= _SUCCESS_THRESHOLD
         ):
-            self._close()
+            self.close()
 
     def _trip(self) -> None:
         if self.state != CircuitState.OPEN:
@@ -62,7 +62,7 @@ class ModelCircuit:
                 f"failures={len(self.failure_timestamps)} in {_FAILURE_WINDOW}s"
             )
 
-    def _close(self) -> None:
+    def close(self) -> None:
         self.state = CircuitState.CLOSED
         self.failure_timestamps.clear()
         self.success_streak = 0
@@ -123,7 +123,7 @@ class ModelCircuitBreakerRegistry:
     def reset(self, model_id: str) -> bool:
         circuit = self._circuits.get(model_id)
         if circuit:
-            circuit._close()
+            circuit.close()
             return True
         return False
 

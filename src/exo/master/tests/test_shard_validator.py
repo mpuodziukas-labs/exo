@@ -13,6 +13,8 @@ Focuses on:
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 from exo.master.shard_validator import ShardValidator
 
 
@@ -93,7 +95,8 @@ class TestShardValidatorValidation:
         sv.register_shard("m2", "n", 0, 1, present=True)
 
         stats = sv.get_stats()
-        by_model = {entry["model_id"]: entry for entry in stats["models"]}
+        models = cast(list[dict[str, Any]], stats["models"])
+        by_model = {entry["model_id"]: entry for entry in models}
         assert by_model["m1"]["total"] == 2
         assert by_model["m1"]["present"] == 1
         assert by_model["m2"]["total"] == 1

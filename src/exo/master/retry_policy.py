@@ -214,6 +214,11 @@ class RetryManager:
         with self._lock:
             self._active.pop(trace_id, None)
 
+    def is_active(self, trace_id: str) -> bool:
+        """Return True if *trace_id* currently has retry state tracked."""
+        with self._lock:
+            return trace_id in self._active
+
     # ------------------------------------------------------------------
     # Observability
     # ------------------------------------------------------------------

@@ -15,7 +15,7 @@ import asyncio
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypedDict, cast
 
 from loguru import logger
 
@@ -53,6 +53,37 @@ _QUEUE_ZERO: int = 100
 _WARN_THRESHOLD: float = 75.0
 _CRITICAL_THRESHOLD: float = 50.0
 _DEGRADE_THRESHOLD: float = 60.0  # factor score below this → degraded
+
+
+# ---------------------------------------------------------------------------
+# Wire-format TypedDicts (shapes of untyped dicts returned by other
+# subsystems' `dict[str, Any]`-typed methods; asserted via cast() at the
+# single point of use, same pattern as topology_graph.py's LinkStatEntry).
+# ---------------------------------------------------------------------------
+
+
+class _SloSummary(TypedDict):
+    """Shape of SloTracker.summary()."""
+
+    client_count: int
+    global_p50_ttft_ms: float
+    global_p99_ttft_ms: float
+    global_p50_total_ms: float
+    global_p99_total_ms: float
+    total_violations: int
+    slo_ms: float
+
+
+class _LinkStatEntry(TypedDict):
+    """Shape of LinkHealthMonitor.NodeLinkStats.to_dict() entries."""
+
+    node_id: str
+    status: str
+    p50_latency_ms: float
+    p99_latency_ms: float
+    avg_throughput_mbps: float
+    sample_count: int
+    last_sample_ts: float
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +132,18 @@ def _assign_grade(score: float) -> Literal["A", "B", "C", "D", "F"]:
     if score >= 40.0:
         return "D"
     return "F"
+
+
+def assign_grade(score: float) -> Literal["A", "B", "C", "D", "F"]:
+    """Public wrapper around ``_assign_grade`` for callers outside this module
+    (e.g. tests exercising the grade-banding logic directly)."""
+    return _assign_grade(score)
+
+
+def lerp_score(value: float, perfect: float, zero: float) -> float:
+    """Public wrapper around ``_lerp_score`` for callers outside this module
+    (e.g. tests exercising the interpolation logic directly)."""
+    return _lerp_score(value, perfect, zero)
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +221,7 @@ class ClusterHealthScorer:
         )
 
     def _score_p99_ttft(self) -> HealthFactor:
-        summary = SLO_TRACKER.summary()
+        summary = cast("_SloSummary", cast(object, SLO_TRACKER.summary()))
         p99_ms: float = summary.get("global_p99_ttft_ms", 0.0)
         if p99_ms == 0.0:
             # No samples yet — treat as perfect; we can't penalise what hasn't happened
@@ -213,7 +256,7 @@ class ClusterHealthScorer:
             "degraded": 0.0,
             "unknown": 30.0,
         }
-        node_stats = LINK_MONITOR.get_stats()
+        node_stats = cast("list[_LinkStatEntry]", LINK_MONITOR.get_stats())
         if not node_stats:
             return HealthFactor(
                 name="link_health",
@@ -331,6 +374,13 @@ class ClusterHealthScorer:
         """Return the last *n* overall scores (oldest first)."""
         reports = list(self._history)
         return [r.overall_score for r in reports[-n:]]
+
+    @property
+    def history_len(self) -> int:
+        """Number of HealthReport entries currently retained (bounded by
+        ``_HISTORY_MAXLEN``). Public accessor so callers outside this module
+        (e.g. tests) don't need to reach into ``_history`` directly."""
+        return len(self._history)
 
     def stats(self) -> dict[str, object]:
         report = self.current()

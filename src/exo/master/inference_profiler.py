@@ -5,7 +5,7 @@ import time
 from collections import deque
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Generator
+from typing import Any, Generator, cast
 
 from loguru import logger
 
@@ -57,7 +57,7 @@ class InferenceProfile:
 
     def to_chrome_trace(self) -> list[dict[str, Any]]:
         """Chrome tracing format compatible with chrome://tracing and speedscope."""
-        events = []
+        events: list[dict[str, Any]] = []
         for span in self.spans:
             events.append(
                 {
@@ -110,7 +110,7 @@ class InferenceProfiler:
 
     @contextmanager
     def span(
-        self, trace_id: str, phase: str, **metadata: Any
+        self, trace_id: str, phase: str, **metadata: object
     ) -> Generator[PhaseSpan, None, None]:
         profile = self._active.get(trace_id)
         span = PhaseSpan(name=phase, start=time.monotonic(), metadata=dict(metadata))
@@ -262,7 +262,7 @@ class InferenceProfiler:
                 }
             )
 
-        entries.sort(key=lambda e: e["p95_ms"], reverse=True)
+        entries.sort(key=lambda e: cast(float, e["p95_ms"]), reverse=True)
         return entries[:top_n]
 
 

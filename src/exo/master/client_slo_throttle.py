@@ -114,8 +114,8 @@ class ClientSLOThrottle:
         now = time.time()
         record.violation_timestamps.append(now)
         record.total_violations += 1
-        record._prune_window()
 
+        # recent_violations() prunes the window internally before counting.
         recent = record.recent_violations()
         if recent > _VIOLATION_THRESHOLD and not record.is_throttled():
             record.throttle_until = now + _THROTTLE_DURATION_S

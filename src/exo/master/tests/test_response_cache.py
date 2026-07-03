@@ -14,10 +14,10 @@ Focuses on:
 
 from __future__ import annotations
 
+import math
 import time
+from typing import Any
 from unittest.mock import patch
-
-import pytest
 
 from exo.master.response_cache import ResponseCache
 
@@ -58,13 +58,13 @@ class TestMakeKey:
         assert key is not None
 
     def test_same_inputs_produce_identical_key(self) -> None:
-        msgs = [{"role": "user", "content": "test"}]
+        msgs: list[dict[str, Any]] = [{"role": "user", "content": "test"}]
         k1 = ResponseCache.make_key("m", msgs, 0.0, 50, 0.95, None)
         k2 = ResponseCache.make_key("m", msgs, 0.0, 50, 0.95, None)
         assert k1 == k2
 
     def test_different_models_produce_different_keys(self) -> None:
-        msgs: list[dict] = []
+        msgs: list[dict[str, Any]] = []
         k1 = ResponseCache.make_key("model-a", msgs, 0.0, None, 1.0, None)
         k2 = ResponseCache.make_key("model-b", msgs, 0.0, None, 1.0, None)
         assert k1 != k2
@@ -94,7 +94,7 @@ class TestResponseCacheGetPut:
             result = cache.get("expiring")
         assert result is None
         # Entry must have been deleted
-        assert "expiring" not in cache._cache
+        assert not cache.has_entry("expiring")
 
     def test_lru_eviction_removes_oldest_created_at(self) -> None:
         cache = ResponseCache(max_entries=2, default_ttl_seconds=600.0)
@@ -115,8 +115,9 @@ class TestResponseCacheGetPut:
     def test_custom_ttl_overrides_default(self) -> None:
         cache = ResponseCache(max_entries=10, default_ttl_seconds=300.0)
         cache.put("custom", "m", "{}", 1, 1, ttl_seconds=10.0)
-        entry = cache._cache["custom"]
-        assert entry.ttl_seconds == pytest.approx(10.0)
+        entry = cache.peek("custom")
+        assert entry is not None
+        assert math.isclose(entry.ttl_seconds, 10.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_invalidate_model_removes_only_target_model(self) -> None:
         cache = ResponseCache(max_entries=20)
@@ -141,7 +142,8 @@ class TestResponseCacheGetPut:
         s = cache.stats()
         assert s["hits"] == 2
         assert s["misses"] == 1
-        assert s["hit_rate"] == pytest.approx(2 / 3, rel=1e-4)
+        assert isinstance(s["hit_rate"], float)
+        assert math.isclose(s["hit_rate"], 2 / 3, rel_tol=1e-4, abs_tol=1e-12)
 
     def test_prometheus_metrics_contains_expected_lines(self) -> None:
         cache = ResponseCache(max_entries=5)

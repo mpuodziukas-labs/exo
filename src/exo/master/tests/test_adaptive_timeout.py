@@ -11,19 +11,21 @@ Fallback (< 10 samples) returns FALLBACK_TIMEOUT_S = 60.0.
 
 from __future__ import annotations
 
-import pytest
+import math
 
-from exo.master.adaptive_timeout import (
-    _FALLBACK_TIMEOUT_S,
-    _MAX_TIMEOUT_S,
-    _MIN_TIMEOUT_S,
-    _SAFETY_MULTIPLIER,
-    _WINDOW,
-    AdaptiveTimeoutCalculator,
-)
+from exo.master.adaptive_timeout import AdaptiveTimeoutCalculator
 
 MODEL_A = "org/model-small-4bit"
 MODEL_B = "org/model-large-8bit"
+
+# Mirrors the module-private tuning constants documented in the module
+# docstring above — kept local so the test doesn't reach into
+# exo.master.adaptive_timeout's private surface (reportPrivateUsage).
+FALLBACK_TIMEOUT_S = 60.0
+MIN_TIMEOUT_S = 5.0
+MAX_TIMEOUT_S = 300.0
+SAFETY_MULTIPLIER = 1.5
+WINDOW = 200
 
 
 # ---------------------------------------------------------------------------
@@ -36,13 +38,13 @@ def test_fallback_when_fewer_than_10_samples() -> None:
     calc = AdaptiveTimeoutCalculator()
     for _ in range(9):
         calc.record(MODEL_A, 10.0)
-    assert calc.base_timeout(MODEL_A) == _FALLBACK_TIMEOUT_S
+    assert calc.base_timeout(MODEL_A) == FALLBACK_TIMEOUT_S
 
 
 def test_fallback_for_unknown_model() -> None:
     """base_timeout returns FALLBACK for a model with zero samples."""
     calc = AdaptiveTimeoutCalculator()
-    assert calc.base_timeout("no-such-model") == _FALLBACK_TIMEOUT_S
+    assert calc.base_timeout("no-such-model") == FALLBACK_TIMEOUT_S
 
 
 # ---------------------------------------------------------------------------
@@ -56,24 +58,24 @@ def test_base_timeout_computed_from_p99() -> None:
     # All samples identical: p99 = 20.0
     for _ in range(15):
         calc.record(MODEL_A, 20.0)
-    expected = max(_MIN_TIMEOUT_S, min(_MAX_TIMEOUT_S, 20.0 * _SAFETY_MULTIPLIER))
-    assert calc.base_timeout(MODEL_A) == pytest.approx(expected, abs=0.01)
+    expected = max(MIN_TIMEOUT_S, min(MAX_TIMEOUT_S, 20.0 * SAFETY_MULTIPLIER))
+    assert math.isclose(calc.base_timeout(MODEL_A), expected, rel_tol=0.0, abs_tol=0.01)
 
 
 def test_base_timeout_clamped_to_min() -> None:
-    """Very fast responses → base_timeout is clamped at _MIN_TIMEOUT_S."""
+    """Very fast responses → base_timeout is clamped at MIN_TIMEOUT_S."""
     calc = AdaptiveTimeoutCalculator()
     for _ in range(15):
         calc.record(MODEL_A, 0.01)  # p99 * 1.5 = 0.015 < 5.0
-    assert calc.base_timeout(MODEL_A) == _MIN_TIMEOUT_S
+    assert calc.base_timeout(MODEL_A) == MIN_TIMEOUT_S
 
 
 def test_base_timeout_clamped_to_max() -> None:
-    """Extremely slow model → base_timeout is clamped at _MAX_TIMEOUT_S."""
+    """Extremely slow model → base_timeout is clamped at MAX_TIMEOUT_S."""
     calc = AdaptiveTimeoutCalculator()
     for _ in range(15):
         calc.record(MODEL_A, 1000.0)  # p99 * 1.5 >> 300
-    assert calc.base_timeout(MODEL_A) == _MAX_TIMEOUT_S
+    assert calc.base_timeout(MODEL_A) == MAX_TIMEOUT_S
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +105,7 @@ def test_unknown_priority_defaults_to_normal_multiplier() -> None:
 
     unknown_t = calc.timeout_for(MODEL_A, "nonexistent")
     normal_t = calc.timeout_for(MODEL_A, "normal")
-    assert unknown_t == pytest.approx(normal_t, abs=0.01)
+    assert math.isclose(unknown_t, normal_t, rel_tol=0.0, abs_tol=0.01)
 
 
 # ---------------------------------------------------------------------------
@@ -115,13 +117,13 @@ def test_window_eviction_drops_oldest_samples() -> None:
     """After _WINDOW samples the deque drops the oldest, affecting p99."""
     calc = AdaptiveTimeoutCalculator()
     # Fill window with slow samples
-    for _ in range(_WINDOW):
+    for _ in range(WINDOW):
         calc.record(MODEL_B, 100.0)
     slow_base = calc.base_timeout(MODEL_B)
 
     # Overwrite the entire window with fast samples
-    for _ in range(_WINDOW):
-        calc.record(MODEL_B, 1.0)  # clamp will floor at _MIN_TIMEOUT_S
+    for _ in range(WINDOW):
+        calc.record(MODEL_B, 1.0)  # clamp will floor at MIN_TIMEOUT_S
     fast_base = calc.base_timeout(MODEL_B)
 
     assert fast_base < slow_base

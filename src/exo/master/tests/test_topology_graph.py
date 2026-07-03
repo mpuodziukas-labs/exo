@@ -20,6 +20,7 @@ Tests focus on:
 
 from __future__ import annotations
 
+from typing import Protocol, cast
 from unittest.mock import patch
 
 from exo.master.topology_graph import (
@@ -27,6 +28,15 @@ from exo.master.topology_graph import (
     GraphNode,
     TopologyGraphBuilder,
 )
+
+
+class _HasReturnValue(Protocol):
+    """Narrow view of a Mock attribute used only to set `.return_value`
+    without tripping strict-mode reportAny on MagicMock's dynamic
+    `__getattr__` (which is typed `Any`)."""
+
+    return_value: object
+
 
 # ---------------------------------------------------------------------------
 # GraphNode / GraphEdge dataclass tests
@@ -91,10 +101,10 @@ class TestBuildEdgesLinkTypeClassification:
             },
         }
         with patch("exo.master.topology_graph.LINK_MONITOR") as lm:
-            lm.get_stats.return_value = [
+            cast(_HasReturnValue, lm.get_stats).return_value = [
                 {"node_id": k, **v} for k, v in link_stats.items()
             ]
-            edges = builder._build_edges(nodes)
+            edges = builder.build_edges(nodes)
 
         tb4_edges = [e for e in edges if e.link_type == "tb4"]
         assert len(tb4_edges) > 0
@@ -103,7 +113,7 @@ class TestBuildEdgesLinkTypeClassification:
         builder = TopologyGraphBuilder()
         nodes = self._make_two_nodes()
         with patch("exo.master.topology_graph.LINK_MONITOR") as lm:
-            lm.get_stats.return_value = [
+            cast(_HasReturnValue, lm.get_stats).return_value = [
                 {
                     "node_id": "n1",
                     "p50_latency_ms": 5.0,
@@ -117,7 +127,7 @@ class TestBuildEdgesLinkTypeClassification:
                     "status": "healthy",
                 },
             ]
-            edges = builder._build_edges(nodes)
+            edges = builder.build_edges(nodes)
 
         ethernet_edges = [e for e in edges if e.link_type == "ethernet"]
         assert len(ethernet_edges) > 0
@@ -126,8 +136,10 @@ class TestBuildEdgesLinkTypeClassification:
         builder = TopologyGraphBuilder()
         nodes = self._make_two_nodes()
         with patch("exo.master.topology_graph.LINK_MONITOR") as lm:
-            lm.get_stats.return_value = []  # no link stats → throughput=0
-            edges = builder._build_edges(nodes)
+            cast(
+                _HasReturnValue, lm.get_stats
+            ).return_value = []  # no link stats → throughput=0
+            edges = builder.build_edges(nodes)
 
         unknown_edges = [e for e in edges if e.link_type == "unknown"]
         assert len(unknown_edges) == len(edges)  # all unknown
@@ -140,16 +152,16 @@ class TestBuildEdgesLinkTypeClassification:
             for i in range(3)
         ]
         with patch("exo.master.topology_graph.LINK_MONITOR") as lm:
-            lm.get_stats.return_value = []
-            edges = builder._build_edges(nodes)
+            cast(_HasReturnValue, lm.get_stats).return_value = []
+            edges = builder.build_edges(nodes)
 
         assert len(edges) == 3 * 2  # permutations(3, 2)
 
     def test_empty_nodes_produce_zero_edges(self) -> None:
         builder = TopologyGraphBuilder()
         with patch("exo.master.topology_graph.LINK_MONITOR") as lm:
-            lm.get_stats.return_value = []
-            edges = builder._build_edges([])
+            cast(_HasReturnValue, lm.get_stats).return_value = []
+            edges = builder.build_edges([])
         assert edges == []
 
 
@@ -168,12 +180,12 @@ class TestSerialisation:
             patch("exo.master.topology_graph.LINK_MONITOR") as lm,
             patch("exo.master.topology_graph.HEALTH_SCORER") as hs,
         ):
-            nr.all_nodes.return_value = []
-            hm.alive_nodes.return_value = []
-            hm.evicted_nodes.return_value = []
-            ut.get_node.return_value = None
-            lm.get_stats.return_value = []
-            hs.current.return_value = None
+            cast(_HasReturnValue, nr.all_nodes).return_value = []
+            cast(_HasReturnValue, hm.alive_nodes).return_value = []
+            cast(_HasReturnValue, hm.evicted_nodes).return_value = []
+            cast(_HasReturnValue, ut.get_node).return_value = None
+            cast(_HasReturnValue, lm.get_stats).return_value = []
+            cast(_HasReturnValue, hs.current).return_value = None
 
             result = builder.to_d3_json()
 
@@ -192,11 +204,11 @@ class TestSerialisation:
             patch("exo.master.topology_graph.LINK_MONITOR") as lm,
             patch("exo.master.topology_graph.HEALTH_SCORER") as hs,
         ):
-            nr.all_nodes.return_value = []
-            hm.alive_nodes.return_value = ["a", "b"]
-            hm.evicted_nodes.return_value = []
-            ut.get_node.return_value = None
-            lm.get_stats.return_value = [
+            cast(_HasReturnValue, nr.all_nodes).return_value = []
+            cast(_HasReturnValue, hm.alive_nodes).return_value = ["a", "b"]
+            cast(_HasReturnValue, hm.evicted_nodes).return_value = []
+            cast(_HasReturnValue, ut.get_node).return_value = None
+            cast(_HasReturnValue, lm.get_stats).return_value = [
                 {
                     "node_id": "a",
                     "p50_latency_ms": 1.0,
@@ -210,7 +222,7 @@ class TestSerialisation:
                     "status": "healthy",
                 },
             ]
-            hs.current.return_value = None
+            cast(_HasReturnValue, hs.current).return_value = None
 
             result = builder.to_graph_dict()
 
@@ -229,12 +241,12 @@ class TestSerialisation:
             patch("exo.master.topology_graph.LINK_MONITOR") as lm,
             patch("exo.master.topology_graph.HEALTH_SCORER") as hs,
         ):
-            nr.all_nodes.return_value = []
-            hm.alive_nodes.return_value = []
-            hm.evicted_nodes.return_value = []
-            ut.get_node.return_value = None
-            lm.get_stats.return_value = []
-            hs.current.return_value = None  # no history
+            cast(_HasReturnValue, nr.all_nodes).return_value = []
+            cast(_HasReturnValue, hm.alive_nodes).return_value = []
+            cast(_HasReturnValue, hm.evicted_nodes).return_value = []
+            cast(_HasReturnValue, ut.get_node).return_value = None
+            cast(_HasReturnValue, lm.get_stats).return_value = []
+            cast(_HasReturnValue, hs.current).return_value = None  # no history
 
             graph = builder.build()
 
