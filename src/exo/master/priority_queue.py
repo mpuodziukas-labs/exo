@@ -21,7 +21,7 @@ class PriorityItem(Generic[T]):
     item: T = field(compare=False)
 
 
-class PriorityRequestQueue:
+class PriorityRequestQueue(Generic[T]):
     """
     Min-heap priority queue for inference requests.
 
@@ -44,14 +44,14 @@ class PriorityRequestQueue:
 
     def __init__(self, max_size: int = 128) -> None:
         self.max_size = max_size
-        self._heap: list[PriorityItem[Any]] = []
+        self._heap: list[PriorityItem[T]] = []
         self._seq = 0
         self._lock = Lock()
         self._enqueued_total: int = 0
         self._preempted_total: int = 0
         self._dequeued_total: int = 0
 
-    def enqueue(self, item: Any, priority: int = 5) -> bool:
+    def enqueue(self, item: T, priority: int = 5) -> bool:
         """
         Add item to queue. Returns True if enqueued, False if rejected.
         If queue is full and item has higher priority than minimum, preempts lowest.
@@ -86,7 +86,7 @@ class PriorityRequestQueue:
             self._enqueued_total += 1
             return True
 
-    def dequeue(self) -> tuple[Any, int] | None:
+    def dequeue(self) -> tuple[T, int] | None:
         """Return (item, priority) or None if empty."""
         with self._lock:
             if not self._heap:
@@ -131,6 +131,6 @@ class PriorityRequestQueue:
         )
 
 
-PRIORITY_QUEUE = PriorityRequestQueue(
+PRIORITY_QUEUE: PriorityRequestQueue[object] = PriorityRequestQueue(
     max_size=int(os.getenv("EXO_PRIORITY_QUEUE_MAX_SIZE", "128"))
 )

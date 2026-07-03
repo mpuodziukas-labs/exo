@@ -264,6 +264,10 @@ class TopologyGraphBuilder:
     # Helpers — edges
     # ------------------------------------------------------------------
 
+    def build_edges(self, nodes: list[GraphNode]) -> list[GraphEdge]:
+        """Public accessor for `_build_edges` — one directed edge per node pair."""
+        return self._build_edges(nodes)
+
     def _build_edges(self, nodes: list[GraphNode]) -> list[GraphEdge]:
         """One directed edge per ordered node pair using LINK_MONITOR stats."""
         # LINK_MONITOR.get_stats() is typed list[dict[str, Any]]; the entries

@@ -70,14 +70,32 @@ class RateLimiter:
         self._lock = Lock()
         self._rejected_total: int = 0
         self._allowed_total: int = 0
+        self._authenticated_rpm: float | None = None
+        self._anonymous_rpm: float | None = None
 
     @property
     def enabled(self) -> bool:
         return os.getenv("EXO_RATE_LIMIT_ENABLED", "1") == "1"
 
+    def configure(
+        self,
+        *,
+        authenticated_rpm: float | None = None,
+        anonymous_rpm: float | None = None,
+    ) -> None:
+        """Override RPM limits at runtime (e.g. from hot-reloaded config)."""
+        if authenticated_rpm is not None:
+            self._authenticated_rpm = authenticated_rpm
+        if anonymous_rpm is not None:
+            self._anonymous_rpm = anonymous_rpm
+
     def _rpm_for_client(self, client_id: str) -> float:
         if client_id == "anonymous":
+            if self._anonymous_rpm is not None:
+                return self._anonymous_rpm
             return float(os.getenv("EXO_RATE_LIMIT_ANONYMOUS_RPM", "10"))
+        if self._authenticated_rpm is not None:
+            return self._authenticated_rpm
         return float(os.getenv("EXO_RATE_LIMIT_RPM", "60"))
 
     def _get_or_create_bucket(self, client_id: str) -> TokenBucket:
@@ -127,6 +145,15 @@ class RateLimiter:
     def reset_client(self, client_id: str) -> None:
         with self._lock:
             self._buckets.pop(client_id, None)
+
+    def get_bucket(self, client_id: str) -> TokenBucket:
+        """Public accessor: return (creating if needed) the bucket for client_id."""
+        with self._lock:
+            return self._get_or_create_bucket(client_id)
+
+    def has_bucket(self, client_id: str) -> bool:
+        """True if a bucket already exists for client_id (does not create one)."""
+        return client_id in self._buckets
 
     def stats(self) -> dict[str, Any]:
         with self._lock:
