@@ -39,7 +39,7 @@ exo = "exo.main:main"
 dev = [
   "basedpyright>=1.29.0",
   "pyinstaller>=6.17.0",
-  "pytest>=8.4.0",
+  "pytest>=9.0.3",
   "pytest-asyncio>=1.0.0",
   "pytest-env",
   "ruff>=0.11.13",
