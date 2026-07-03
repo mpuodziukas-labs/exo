@@ -20,7 +20,7 @@ import os
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast
 
 import anyio
 from loguru import logger
@@ -116,7 +116,8 @@ class AutoscaleTrigger:
 
     def _global_p99_ttft_ms(self) -> float:
         summary = SLO_TRACKER.summary()
-        return float(summary.get("global_p99_ttft_ms", 0.0))
+        raw = cast(float | int | str | None, summary.get("global_p99_ttft_ms", 0.0))
+        return float(raw) if raw is not None else 0.0
 
     def _rejection_rate_recent(self) -> float:
         """
@@ -127,8 +128,10 @@ class AutoscaleTrigger:
         """
         stats = ADMISSION_CONTROLLER.stats()
         now = time.time()
-        rejected_total = int(stats.get("rejected_total", 0))
-        admitted_total = int(stats.get("admitted_total", 0))
+        rejected_raw = cast(float | int | str | None, stats.get("rejected_total", 0))
+        admitted_raw = cast(float | int | str | None, stats.get("admitted_total", 0))
+        rejected_total = int(rejected_raw) if rejected_raw is not None else 0
+        admitted_total = int(admitted_raw) if admitted_raw is not None else 0
         total_now = rejected_total + admitted_total
 
         snap = self._last_rejection_snapshot
@@ -141,7 +144,8 @@ class AutoscaleTrigger:
             rate = delta_rejected / max(delta_total, 1)
         else:
             # Fall back to lifetime rate on first call.
-            rate = float(stats.get("rejection_rate", 0.0))
+            rate_raw = cast(float | int | str | None, stats.get("rejection_rate", 0.0))
+            rate = float(rate_raw) if rate_raw is not None else 0.0
 
         # Update snapshot.
         self._last_rejection_snapshot = {

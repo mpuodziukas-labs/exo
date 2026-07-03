@@ -35,6 +35,25 @@ def _fresh() -> FailoverCoordinator:
     return FailoverCoordinator()
 
 
+class _FakeHeartbeatMonitor:
+    """Typed test double for HEARTBEAT_MONITOR — avoids MagicMock's Any-typed
+    attributes (reportAny) while matching HeartbeatMonitor's public surface."""
+
+    def __init__(
+        self,
+        evicted: list[str] | None = None,
+        alive: list[str] | None = None,
+    ) -> None:
+        self._evicted = list(evicted) if evicted is not None else []
+        self._alive = list(alive) if alive is not None else []
+
+    def evicted_nodes(self) -> list[str]:
+        return self._evicted
+
+    def alive_nodes(self) -> list[str]:
+        return self._alive
+
+
 # ---------------------------------------------------------------------------
 # trigger()
 # ---------------------------------------------------------------------------
@@ -44,9 +63,7 @@ def test_trigger_creates_event_and_increments_total(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """trigger() creates a FailoverEvent and increments _total_failovers."""
-    fake_hb = MagicMock()
-    fake_hb.evicted_nodes.return_value = set()
-    fake_hb.alive_nodes.return_value = []
+    fake_hb = _FakeHeartbeatMonitor(evicted=[], alive=[])
     fake_emit = MagicMock()
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", fake_hb)
     monkeypatch.setattr("exo.master.failover.emit_cluster_event", fake_emit)
@@ -65,9 +82,7 @@ def test_trigger_creates_event_and_increments_total(
 
 def test_trigger_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     """Calling trigger twice for the same task returns the same event."""
-    fake_hb = MagicMock()
-    fake_hb.evicted_nodes.return_value = set()
-    fake_hb.alive_nodes.return_value = []
+    fake_hb = _FakeHeartbeatMonitor(evicted=[], alive=[])
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", fake_hb)
     monkeypatch.setattr("exo.master.failover.emit_cluster_event", MagicMock())
 
@@ -136,8 +151,7 @@ def test_select_failover_node_returns_none_when_no_alive_nodes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Returns None when heartbeat has no alive nodes."""
-    fake_hb = MagicMock()
-    fake_hb.alive_nodes.return_value = []
+    fake_hb = _FakeHeartbeatMonitor(alive=[])
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", fake_hb)
     monkeypatch.setattr("exo.master.failover.emit_cluster_event", MagicMock())
 
@@ -150,8 +164,7 @@ def test_select_failover_node_excludes_failed_node(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The failed node itself is never selected as failover target."""
-    fake_hb = MagicMock()
-    fake_hb.alive_nodes.return_value = ["dead-node", "node-b"]
+    fake_hb = _FakeHeartbeatMonitor(alive=["dead-node", "node-b"])
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", fake_hb)
     monkeypatch.setattr("exo.master.failover.emit_cluster_event", MagicMock())
 
@@ -167,8 +180,7 @@ def test_select_failover_node_prefers_healthy_over_open(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Nodes with CLOSED circuit breakers are preferred over OPEN ones."""
-    fake_hb = MagicMock()
-    fake_hb.alive_nodes.return_value = ["node-open", "node-closed"]
+    fake_hb = _FakeHeartbeatMonitor(alive=["node-open", "node-closed"])
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", fake_hb)
     monkeypatch.setattr("exo.master.failover.emit_cluster_event", MagicMock())
 
@@ -187,8 +199,7 @@ def test_select_failover_node_prefers_healthy_over_open(
 
 def test_should_failover_true_when_cb_open(monkeypatch: pytest.MonkeyPatch) -> None:
     """should_failover returns True if the node's circuit breaker is OPEN."""
-    fake_hb = MagicMock()
-    fake_hb.evicted_nodes.return_value = set()
+    fake_hb = _FakeHeartbeatMonitor(evicted=[])
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", fake_hb)
 
     coord = _fresh()
@@ -200,8 +211,7 @@ def test_should_failover_true_when_heartbeat_evicted(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """should_failover returns True if heartbeat has evicted the node."""
-    fake_hb = MagicMock()
-    fake_hb.evicted_nodes.return_value = {"hb-node"}
+    fake_hb = _FakeHeartbeatMonitor(evicted=["hb-node"])
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", fake_hb)
 
     coord = _fresh()
@@ -211,8 +221,7 @@ def test_should_failover_true_when_heartbeat_evicted(
 
 def test_should_failover_false_when_healthy(monkeypatch: pytest.MonkeyPatch) -> None:
     """should_failover returns False for a healthy node with no eviction."""
-    fake_hb = MagicMock()
-    fake_hb.evicted_nodes.return_value = set()
+    fake_hb = _FakeHeartbeatMonitor(evicted=[])
     monkeypatch.setattr("exo.master.failover.HEARTBEAT_MONITOR", fake_hb)
 
     coord = _fresh()

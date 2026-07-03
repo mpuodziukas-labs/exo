@@ -6,7 +6,7 @@ Ensures backward compatibility when config fields change.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from loguru import logger
 
@@ -56,7 +56,7 @@ class ConfigVersionManager:
         return _CURRENT_VERSION
 
     def migrate(self, cfg: dict[str, Any]) -> dict[str, Any]:
-        version = cfg.get("schema_version", 1)
+        version = cast(int, cfg.get("schema_version", 1))
         if version == _CURRENT_VERSION:
             return cfg
         if version > _CURRENT_VERSION:
@@ -82,7 +82,7 @@ class ConfigVersionManager:
         return result
 
     def validate_version(self, cfg: dict[str, Any]) -> bool:
-        return cfg.get("schema_version", 1) == _CURRENT_VERSION
+        return cast(int, cfg.get("schema_version", 1)) == _CURRENT_VERSION
 
     def stamp(self, cfg: dict[str, Any]) -> dict[str, Any]:
         """Add current version stamp to a config dict."""

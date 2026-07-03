@@ -81,6 +81,14 @@ class ResponseCache:
         raw = json.dumps(payload, sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(raw.encode()).hexdigest()
 
+    def has_entry(self, cache_key: str) -> bool:
+        """Return True if a raw entry exists (no TTL/eviction side effects)."""
+        return cache_key in self._cache
+
+    def peek(self, cache_key: str) -> CachedResponse | None:
+        """Return the raw cache entry, bypassing TTL expiry and hit-count updates."""
+        return self._cache.get(cache_key)
+
     def get(self, cache_key: str) -> CachedResponse | None:
         with self._lock:
             entry = self._cache.get(cache_key)

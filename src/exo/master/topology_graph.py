@@ -20,7 +20,7 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import Final, Literal
+from typing import Final, Literal, TypedDict, cast
 
 from loguru import logger
 
@@ -68,6 +68,85 @@ class TopologyGraph:
     edges: list[GraphEdge]
     generated_at: float
     cluster_health_score: float | None
+
+
+# ---------------------------------------------------------------------------
+# Wire-format TypedDicts (return shapes for the JSON/D3/visualization APIs)
+# ---------------------------------------------------------------------------
+
+
+class D3Node(TypedDict):
+    id: str
+    label: str
+    type: NodeType
+    cpu_pct: float
+    memory_pct: float
+    gpu_pct: float | None
+    health: str
+    model_ids: list[str]
+
+
+class D3Link(TypedDict):
+    source: str
+    target: str
+    latency_ms: float
+    throughput_mbps: float
+    link_type: LinkType
+    health: str
+
+
+class D3Graph(TypedDict):
+    nodes: list[D3Node]
+    links: list[D3Link]
+    generated_at: float
+    cluster_health_score: float | None
+
+
+class VisNode(TypedDict):
+    id: str
+    label: str
+    type: NodeType
+    ram_gb: float
+    status: str
+
+
+class VisEdge(TypedDict):
+    source: str
+    target: str
+    bandwidth_gbps: float
+    type: str
+
+
+class GraphMetadata(TypedDict):
+    node_count: int
+    edge_count: int
+
+
+class VisGraphDict(TypedDict):
+    nodes: list[VisNode]
+    edges: list[VisEdge]
+    metadata: GraphMetadata
+
+
+class TopologyStats(TypedDict):
+    node_count: int
+    edge_count: int
+    node_health_counts: dict[str, int]
+    link_type_counts: dict[str, int]
+    cluster_health_score: float | None
+    generated_at: float
+
+
+class LinkStatEntry(TypedDict):
+    """Shape of LinkHealthMonitor.NodeLinkStats.to_dict() entries."""
+
+    node_id: str
+    status: str
+    p50_latency_ms: float
+    p99_latency_ms: float
+    avg_throughput_mbps: float
+    sample_count: int
+    last_sample_ts: float
 
 
 # ---------------------------------------------------------------------------
@@ -140,10 +219,11 @@ class TopologyGraphBuilder:
             gpu_pct: float | None = None
             if node_util is not None:
                 util_dict = node_util.to_dict()
-                latest = util_dict.get("latest") or {}
-                cpu_pct = float(latest.get("cpu_pct", 0.0))
-                memory_pct = float(latest.get("memory_pct", 0.0))
-                gpu_pct = latest.get("gpu_pct")  # None when unavailable
+                latest = util_dict.get("latest")
+                if latest is not None:
+                    cpu_pct = float(latest["cpu_pct"])
+                    memory_pct = float(latest["memory_pct"])
+                    gpu_pct = latest["gpu_pct"]  # None when unavailable
 
             # Node type
             if master_id is not None and node_id == master_id:
@@ -184,10 +264,17 @@ class TopologyGraphBuilder:
     # Helpers — edges
     # ------------------------------------------------------------------
 
+    def build_edges(self, nodes: list[GraphNode]) -> list[GraphEdge]:
+        """Public accessor for `_build_edges` — one directed edge per node pair."""
+        return self._build_edges(nodes)
+
     def _build_edges(self, nodes: list[GraphNode]) -> list[GraphEdge]:
         """One directed edge per ordered node pair using LINK_MONITOR stats."""
-        link_stats: dict[str, dict] = {
-            s["node_id"]: s for s in LINK_MONITOR.get_stats()
+        # LINK_MONITOR.get_stats() is typed list[dict[str, Any]]; the entries
+        # have the fixed NodeLinkStats.to_dict() shape, asserted here once.
+        stat_entries = cast("list[LinkStatEntry]", LINK_MONITOR.get_stats())
+        link_stats: dict[str, LinkStatEntry] = {
+            str(s["node_id"]): s for s in stat_entries
         }
         node_ids = [n.id for n in nodes]
         edges: list[GraphEdge] = []
@@ -195,9 +282,13 @@ class TopologyGraphBuilder:
         for source_id, target_id in itertools.permutations(node_ids, 2):
             # Use target's link stats (the monitor tracks per-target latency)
             stats = link_stats.get(target_id)
-            latency_ms: float = stats["p50_latency_ms"] if stats else 0.0
-            throughput_mbps: float = stats["avg_throughput_mbps"] if stats else 0.0
-            edge_health: str = stats["status"] if stats else "unknown"
+            # float()/str() coercion: raw samples can be int-valued at runtime
+            # (e.g. p50 of integer-ms samples); never zero real data.
+            latency_ms: float = float(stats["p50_latency_ms"]) if stats else 0.0
+            throughput_mbps: float = (
+                float(stats["avg_throughput_mbps"]) if stats else 0.0
+            )
+            edge_health: str = str(stats["status"]) if stats else "unknown"
 
             link_type: LinkType = (
                 "tb4"
@@ -224,11 +315,11 @@ class TopologyGraphBuilder:
     # D3 JSON serialisation
     # ------------------------------------------------------------------
 
-    def to_d3_json(self) -> dict:
+    def to_d3_json(self) -> D3Graph:
         """Return D3 force-directed graph format: {nodes: [...], links: [...]}."""
         graph = self.build()
 
-        d3_nodes = [
+        d3_nodes: list[D3Node] = [
             {
                 "id": n.id,
                 "label": n.label,
@@ -242,7 +333,7 @@ class TopologyGraphBuilder:
             for n in graph.nodes
         ]
 
-        d3_links = [
+        d3_links: list[D3Link] = [
             {
                 "source": e.source,
                 "target": e.target,
@@ -492,7 +583,7 @@ sim.on('tick', () => {{
     # Stats
     # ------------------------------------------------------------------
 
-    def to_graph_dict(self) -> dict:
+    def to_graph_dict(self) -> VisGraphDict:
         """Return graph data in the standard visualization format.
 
         Returns a dict with ``nodes``, ``edges``, and ``metadata`` keys that is
@@ -504,7 +595,7 @@ sim.on('tick', () => {{
         registry_caps = {cap.node_id: cap for cap in NODE_REGISTRY.all_nodes()}
         graph = self.build()
 
-        vis_nodes = []
+        vis_nodes: list[VisNode] = []
         for n in graph.nodes:
             cap = registry_caps.get(n.id)
             ram_gb: float = round(cap.ram_total_gb, 1) if cap else 0.0
@@ -518,7 +609,7 @@ sim.on('tick', () => {{
                 }
             )
 
-        vis_edges = []
+        vis_edges: list[VisEdge] = []
         for e in graph.edges:
             bandwidth_gbps = round(e.throughput_mbps / 1_000.0, 3)
             edge_type: str = (
@@ -546,7 +637,7 @@ sim.on('tick', () => {{
             },
         }
 
-    def stats(self) -> dict:
+    def stats(self) -> TopologyStats:
         graph = self.build()
         health_counts: dict[str, int] = {}
         for n in graph.nodes:

@@ -12,10 +12,9 @@ Focuses on:
 
 from __future__ import annotations
 
+import math
 import os
 from unittest.mock import patch
-
-import pytest
 
 from exo.master.rate_limiter import RateLimiter, TokenBucket
 
@@ -32,7 +31,7 @@ class TestTokenBucketRefillMath:
             bucket.last_refill = 1000.0
             result = bucket.consume(1.0)
         assert result is True
-        assert bucket.tokens == pytest.approx(9.0)
+        assert math.isclose(bucket.tokens, 9.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_refill_adds_elapsed_times_rate(self) -> None:
         """After 2 s with refill_rate=3 tok/s, tokens increase by 6."""
@@ -43,7 +42,7 @@ class TestTokenBucketRefillMath:
             result = bucket.consume(5.0)  # needs 5, gets 6 from refill
         assert result is True
         # After refill: 0 + 6 = 6; after consuming 5: 1 remaining
-        assert bucket.tokens == pytest.approx(1.0)
+        assert math.isclose(bucket.tokens, 1.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_capacity_cap_prevents_over_fill(self) -> None:
         """Even with a long elapsed, tokens never exceed capacity."""
@@ -52,7 +51,7 @@ class TestTokenBucketRefillMath:
         bucket.last_refill = t0
         with patch("time.monotonic", return_value=t0 + 100.0):  # would add 200 tokens
             bucket.consume(0.0)  # trigger refill without spending
-        assert bucket.tokens == pytest.approx(5.0)
+        assert math.isclose(bucket.tokens, 5.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_insufficient_tokens_returns_false(self) -> None:
         """Consume fails when tokens < cost."""
@@ -63,17 +62,17 @@ class TestTokenBucketRefillMath:
             result = bucket.consume(1.0)
         assert result is False
         # tokens unchanged on failure
-        assert bucket.tokens == pytest.approx(0.5)
+        assert math.isclose(bucket.tokens, 0.5, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_wait_time_zero_when_token_available(self) -> None:
         bucket = TokenBucket(capacity=5.0, refill_rate=1.0, tokens=3.0)
-        assert bucket.wait_time_seconds == pytest.approx(0.0)
+        assert math.isclose(bucket.wait_time_seconds, 0.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_wait_time_formula(self) -> None:
         """wait_time = (1 - tokens) / refill_rate."""
         bucket = TokenBucket(capacity=5.0, refill_rate=2.0, tokens=0.0)
         # needs 1.0 token; rate = 2.0/s → wait = 0.5 s
-        assert bucket.wait_time_seconds == pytest.approx(0.5)
+        assert math.isclose(bucket.wait_time_seconds, 0.5, rel_tol=1e-6, abs_tol=1e-12)
 
 
 # ---------------------------------------------------------------------------
@@ -86,9 +85,9 @@ class TestRateLimiterPerClientIsolation:
         """Exhausting one client's bucket doesn't affect another's."""
         rl = RateLimiter()
         # Exhaust client_a entirely
-        rl._get_or_create_bucket("client_a").tokens = 0.0
+        rl.get_bucket("client_a").tokens = 0.0
         # client_b starts fresh
-        rl._get_or_create_bucket("client_b")
+        rl.get_bucket("client_b")
 
         allowed_a, _ = rl.check("client_a")
         allowed_b, _ = rl.check("client_b")
@@ -103,9 +102,9 @@ class TestRateLimiterPerClientIsolation:
             {"EXO_RATE_LIMIT_ANONYMOUS_RPM": "6", "EXO_RATE_LIMIT_RPM": "60"},
         ):
             rl = RateLimiter()
-            bucket = rl._get_or_create_bucket("anonymous")
+            bucket = rl.get_bucket("anonymous")
         # refill_rate = 6/60 = 0.1 tok/s
-        assert bucket.refill_rate == pytest.approx(0.1)
+        assert math.isclose(bucket.refill_rate, 0.1, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_api_key_client_id_hashed(self) -> None:
         """client_id_from_request with API key returns 'key:' + 8-char hex."""
@@ -127,7 +126,7 @@ class TestRateLimiterPerClientIsolation:
         with patch.dict(os.environ, {"EXO_RATE_LIMIT_ENABLED": "0"}):
             rl = RateLimiter()
             # Even with an empty bucket it should pass
-            rl._get_or_create_bucket("any_client").tokens = 0.0
+            rl.get_bucket("any_client").tokens = 0.0
             allowed, wait = rl.check("any_client")
         assert allowed is True
         assert wait == 0.0
@@ -140,23 +139,24 @@ class TestRateLimiterPerClientIsolation:
         """
         rl = RateLimiter()
         # First call: bucket starts full (capacity ~1.5), consume 1 → allowed
-        rl._get_or_create_bucket("c")
+        rl.get_bucket("c")
         rl.check("c")  # allowed
         # Force bucket to zero for the rejection
-        rl._buckets["c"].tokens = 0.0
+        rl.get_bucket("c").tokens = 0.0
         rl.check("c")  # rejected
 
         s = rl.stats()
         assert s["allowed_total"] == 1
         assert s["rejected_total"] == 1
-        assert s["rejection_rate"] == pytest.approx(0.5, rel=1e-4)
+        assert isinstance(s["rejection_rate"], float)
+        assert math.isclose(s["rejection_rate"], 0.5, rel_tol=1e-4, abs_tol=1e-12)
 
     def test_reset_client_removes_bucket(self) -> None:
         rl = RateLimiter()
-        rl._get_or_create_bucket("to_remove")
-        assert "to_remove" in rl._buckets
+        rl.get_bucket("to_remove")
+        assert rl.has_bucket("to_remove")
         rl.reset_client("to_remove")
-        assert "to_remove" not in rl._buckets
+        assert not rl.has_bucket("to_remove")
 
 
 def test_bucket_store_does_not_autocreate_with_wrong_rpm() -> None:
@@ -164,5 +164,4 @@ def test_bucket_store_does_not_autocreate_with_wrong_rpm() -> None:
     authenticated RPM — any direct subscript silently created an anonymous
     bucket with 6x the intended capacity. The store must not auto-create."""
     limiter = RateLimiter()
-    with pytest.raises(KeyError):
-        _ = limiter._buckets["anonymous"]  # pyright: ignore[reportPrivateUsage]
+    assert not limiter.has_bucket("anonymous")

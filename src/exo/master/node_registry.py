@@ -12,10 +12,31 @@ import subprocess
 import time
 from dataclasses import dataclass
 from threading import Lock
-from typing import Final, Literal
+from typing import Final, Literal, Protocol, cast
 
 import psutil
 from loguru import logger
+
+
+class _CudaDeviceProperties(Protocol):
+    """Shape of torch.cuda.get_device_properties()'s return value that we use."""
+
+    multi_processor_count: int
+    clock_rate: float  # kHz
+
+
+class _CudaModule(Protocol):
+    """Narrow view of torch.cuda — torch ships no type stubs in this project."""
+
+    def is_available(self) -> bool: ...
+    def get_device_properties(self, device: int) -> _CudaDeviceProperties: ...
+
+
+def _erase_type(x: object) -> object:
+    """Identity; erases the static type so a module object can be cast to a
+    Protocol (basedpyright rejects direct Module -> Protocol/object casts)."""
+    return x
+
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -201,7 +222,7 @@ def _detect_compute_type() -> ComputeType:
         import importlib.util
 
         if importlib.util.find_spec("torch") is not None:
-            import torch  # type: ignore[import-untyped]
+            import torch
 
             if torch.cuda.is_available():
                 return "cuda"
@@ -231,12 +252,15 @@ def _detect_flops(compute_type: ComputeType) -> float:
 
     if compute_type == "cuda":
         try:
-            import torch  # type: ignore[import-untyped]
+            import torch
 
-            props = torch.cuda.get_device_properties(0)
+            # torch.cuda.get_device_properties is partially unknown under
+            # strict basedpyright; assert the narrow protocol we rely on.
+            cuda_mod = cast(_CudaModule, _erase_type(torch.cuda))
+            props = cuda_mod.get_device_properties(0)
             # Rough FP16 estimate from SM count × 2 × clock
-            sm_count: int = props.multi_processor_count
-            clock_ghz: float = props.clock_rate / 1e6  # clock_rate is in kHz
+            sm_count = props.multi_processor_count
+            clock_ghz = props.clock_rate / 1e6  # clock_rate is in kHz
             cores_per_sm: int = 128  # conservative for Ampere/Ada
             flops = (sm_count * cores_per_sm * 2 * clock_ghz) / 1000  # TFLOPS
             return round(flops, 1)

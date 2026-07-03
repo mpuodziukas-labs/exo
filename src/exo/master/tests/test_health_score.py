@@ -5,12 +5,17 @@ Tests focus on the pure/injectable functions and the ClusterHealthScorer
 computation logic.  The module's singleton dependencies (CIRCUIT_BREAKERS,
 MEMORY_MONITOR, METRICS, SLO_TRACKER, PRIORITY_QUEUE, LINK_MONITOR,
 emit_cluster_event, ADAPTIVE_HEALTH_INTERVAL) are all patched at the point of
-use via pytest monkeypatch or unittest.mock.patch, so each test controls
-exactly what the scorer sees without affecting other tests.
+use via unittest.mock.patch(..., new=<typed fake>), so each test controls
+exactly what the scorer sees without affecting other tests. Typed fakes
+(rather than bare MagicMock) are used so every attribute access below is
+statically concrete instead of Any.
 """
 
 from __future__ import annotations
 
+import math
+from collections.abc import Iterator
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import pytest
@@ -18,40 +23,66 @@ import pytest
 from exo.master.health_score import (
     ClusterHealthScorer,
     HealthFactor,
-    _assign_grade,
-    _lerp_score,
+    assign_grade,
+    lerp_score,
 )
 
 # ---------------------------------------------------------------------------
-# Pure helper tests: _lerp_score
+# Pure helper tests: lerp_score
 # ---------------------------------------------------------------------------
 
 
 class TestLerpScore:
     def test_at_or_below_perfect_returns_100(self) -> None:
-        assert _lerp_score(300.0, perfect=300.0, zero=2000.0) == pytest.approx(100.0)
-        assert _lerp_score(100.0, perfect=300.0, zero=2000.0) == pytest.approx(100.0)
+        assert math.isclose(
+            lerp_score(300.0, perfect=300.0, zero=2000.0),
+            100.0,
+            rel_tol=1e-6,
+            abs_tol=1e-12,
+        )
+        assert math.isclose(
+            lerp_score(100.0, perfect=300.0, zero=2000.0),
+            100.0,
+            rel_tol=1e-6,
+            abs_tol=1e-12,
+        )
 
     def test_at_or_above_zero_returns_0(self) -> None:
-        assert _lerp_score(2000.0, perfect=300.0, zero=2000.0) == pytest.approx(0.0)
-        assert _lerp_score(9999.0, perfect=300.0, zero=2000.0) == pytest.approx(0.0)
+        assert math.isclose(
+            lerp_score(2000.0, perfect=300.0, zero=2000.0),
+            0.0,
+            rel_tol=1e-6,
+            abs_tol=1e-12,
+        )
+        assert math.isclose(
+            lerp_score(9999.0, perfect=300.0, zero=2000.0),
+            0.0,
+            rel_tol=1e-6,
+            abs_tol=1e-12,
+        )
 
     def test_midpoint_returns_50(self) -> None:
         # midpoint of [300, 2000] is 1150
-        assert _lerp_score(1150.0, perfect=300.0, zero=2000.0) == pytest.approx(
-            50.0, rel=1e-3
+        assert math.isclose(
+            lerp_score(1150.0, perfect=300.0, zero=2000.0),
+            50.0,
+            rel_tol=1e-3,
+            abs_tol=1e-12,
         )
 
     def test_interpolation_is_linear(self) -> None:
         """quarter-point should give 75."""
         # 300 + (2000-300)*0.25 = 725 → score should be 75
-        assert _lerp_score(725.0, perfect=300.0, zero=2000.0) == pytest.approx(
-            75.0, rel=1e-3
+        assert math.isclose(
+            lerp_score(725.0, perfect=300.0, zero=2000.0),
+            75.0,
+            rel_tol=1e-3,
+            abs_tol=1e-12,
         )
 
 
 # ---------------------------------------------------------------------------
-# Pure helper tests: _assign_grade
+# Pure helper tests: assign_grade
 # ---------------------------------------------------------------------------
 
 
@@ -72,11 +103,114 @@ class TestAssignGrade:
         ],
     )
     def test_grade_bands(self, score: float, expected: str) -> None:
-        assert _assign_grade(score) == expected
+        assert assign_grade(score) == expected
 
 
 # ---------------------------------------------------------------------------
-# ClusterHealthScorer.compute() with mocked singletons
+# Typed fakes for the module-level singletons ClusterHealthScorer.compute()
+# reaches into. Bare unittest.mock.patch(...) as X gives X the static type
+# MagicMock, whose attributes are all Any — these hand-rolled fakes are
+# patched in via patch(..., new=fake) instead, which types the bound name as
+# the fake's own concrete class, eliminating reportAny entirely.
+# ---------------------------------------------------------------------------
+
+
+class _FakeCounter:
+    def __init__(self, value: float) -> None:
+        self._value = value
+
+    def get(self) -> float:
+        return self._value
+
+
+class _FakeMetrics:
+    def __init__(self, requests_total: float, errors_total: float) -> None:
+        self.requests_total = _FakeCounter(requests_total)
+        self.errors_total = _FakeCounter(errors_total)
+
+
+class _FakeMemoryMonitor:
+    def __init__(self, current_pressure: float) -> None:
+        self.current_pressure = current_pressure
+
+
+class _FakeSloTracker:
+    def __init__(self, global_p99_ttft_ms: float) -> None:
+        self._summary: dict[str, float] = {"global_p99_ttft_ms": global_p99_ttft_ms}
+
+    def summary(self) -> dict[str, float]:
+        return self._summary
+
+
+class _FakeCircuitBreakers:
+    def __init__(self, states: list[dict[str, str]]) -> None:
+        self._states = states
+
+    def all_states(self) -> list[dict[str, str]]:
+        return self._states
+
+
+class _FakePriorityQueue:
+    def __init__(self, size: int) -> None:
+        self._size = size
+
+    def size(self) -> int:
+        return self._size
+
+
+class _FakeLinkMonitor:
+    def __init__(self, stats: list[dict[str, str]]) -> None:
+        self._stats = stats
+
+    def get_stats(self) -> list[dict[str, str]]:
+        return self._stats
+
+
+@contextmanager
+def _patched_singletons(
+    *,
+    cb_states: list[dict[str, str]] | None = None,
+    memory_pressure: float = 0.0,
+    requests_total: float = 100.0,
+    errors_total: float = 0.0,
+    p99_ttft_ms: float = 0.0,
+    queue_size: int = 0,
+    link_stats: list[dict[str, str]] | None = None,
+) -> Iterator[None]:
+    """Patch every singleton exo.master.health_score.compute() touches with a
+    typed fake, so tests configure behavior via plain constructor args."""
+    with (
+        patch(
+            "exo.master.health_score.CIRCUIT_BREAKERS",
+            new=_FakeCircuitBreakers(cb_states or []),
+        ),
+        patch(
+            "exo.master.health_score.MEMORY_MONITOR",
+            new=_FakeMemoryMonitor(memory_pressure),
+        ),
+        patch(
+            "exo.master.health_score.METRICS",
+            new=_FakeMetrics(requests_total, errors_total),
+        ),
+        patch(
+            "exo.master.health_score.SLO_TRACKER",
+            new=_FakeSloTracker(p99_ttft_ms),
+        ),
+        patch(
+            "exo.master.health_score.PRIORITY_QUEUE",
+            new=_FakePriorityQueue(queue_size),
+        ),
+        patch(
+            "exo.master.health_score.LINK_MONITOR",
+            new=_FakeLinkMonitor(link_stats or []),
+        ),
+        patch("exo.master.health_score.emit_cluster_event"),
+    ):
+        yield
+
+
+# ---------------------------------------------------------------------------
+# ClusterHealthScorer.compute() with patched singletons
 # ---------------------------------------------------------------------------
 
 
@@ -100,85 +234,53 @@ class TestClusterHealthScorer:
         ]
 
         # Weights sum to 1.0; all scores are 100 → weighted sum = 100.0
-        assert sum(f.weight for f in factors) == pytest.approx(1.0)
+        assert math.isclose(
+            sum(f.weight for f in factors), 1.0, rel_tol=1e-6, abs_tol=1e-12
+        )
         overall = sum(f.score * f.weight for f in factors)
-        assert overall == pytest.approx(100.0)
+        assert math.isclose(overall, 100.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_weights_sum_to_one(self) -> None:
         """Documented weights must sum to 1.0 (integrity check)."""
         scorer = self._make_scorer()
 
-        # Mock all the singletons referenced inside compute()
-        with (
-            patch("exo.master.health_score.CIRCUIT_BREAKERS") as cb,
-            patch("exo.master.health_score.MEMORY_MONITOR") as mm,
-            patch("exo.master.health_score.METRICS") as met,
-            patch("exo.master.health_score.SLO_TRACKER") as slo,
-            patch("exo.master.health_score.PRIORITY_QUEUE") as pq,
-            patch("exo.master.health_score.LINK_MONITOR") as lm,
-            patch("exo.master.health_score.emit_cluster_event") as _emit,
+        with _patched_singletons(
+            requests_total=100.0, errors_total=0.0, p99_ttft_ms=0.0, queue_size=0
         ):
-            cb.all_states.return_value = []
-            mm.current_pressure = 0.0
-            met.requests_total.get.return_value = 100.0
-            met.errors_total.get.return_value = 0.0
-            slo.summary.return_value = {"global_p99_ttft_ms": 0.0}
-            pq.size.return_value = 0
-            lm.get_stats.return_value = []
-
             report = scorer.compute()
 
         total_weight = sum(f.weight for f in report.factors)
-        assert total_weight == pytest.approx(1.0)
+        assert math.isclose(total_weight, 1.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_open_circuit_breaker_gives_zero_cb_score(self) -> None:
         """When a circuit breaker is OPEN, circuit_breakers factor = 0."""
         scorer = self._make_scorer()
 
-        with (
-            patch("exo.master.health_score.CIRCUIT_BREAKERS") as cb,
-            patch("exo.master.health_score.MEMORY_MONITOR") as mm,
-            patch("exo.master.health_score.METRICS") as met,
-            patch("exo.master.health_score.SLO_TRACKER") as slo,
-            patch("exo.master.health_score.PRIORITY_QUEUE") as pq,
-            patch("exo.master.health_score.LINK_MONITOR") as lm,
-            patch("exo.master.health_score.emit_cluster_event"),
+        with _patched_singletons(
+            cb_states=[{"worker_id": "w1", "state": "open"}],
+            requests_total=100.0,
+            errors_total=0.0,
+            p99_ttft_ms=0.0,
+            queue_size=0,
         ):
-            cb.all_states.return_value = [{"worker_id": "w1", "state": "open"}]
-            mm.current_pressure = 0.0
-            met.requests_total.get.return_value = 100.0
-            met.errors_total.get.return_value = 0.0
-            slo.summary.return_value = {"global_p99_ttft_ms": 0.0}
-            pq.size.return_value = 0
-            lm.get_stats.return_value = []
-
             report = scorer.compute()
 
         cb_factor = next(f for f in report.factors if f.name == "circuit_breakers")
-        assert cb_factor.score == pytest.approx(0.0)
+        assert math.isclose(cb_factor.score, 0.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_degraded_factors_collected_below_threshold(self) -> None:
         """Factors with score < 60 appear in degraded_factors list."""
         scorer = self._make_scorer()
 
-        with (
-            patch("exo.master.health_score.CIRCUIT_BREAKERS") as cb,
-            patch("exo.master.health_score.MEMORY_MONITOR") as mm,
-            patch("exo.master.health_score.METRICS") as met,
-            patch("exo.master.health_score.SLO_TRACKER") as slo,
-            patch("exo.master.health_score.PRIORITY_QUEUE") as pq,
-            patch("exo.master.health_score.LINK_MONITOR") as lm,
-            patch("exo.master.health_score.emit_cluster_event"),
-        ):
+        with _patched_singletons(
             # Open breaker → cb score = 0 → degraded
-            cb.all_states.return_value = [{"worker_id": "w1", "state": "open"}]
-            mm.current_pressure = 0.9  # 90% pressure → score 10 → degraded
-            met.requests_total.get.return_value = 100.0
-            met.errors_total.get.return_value = 0.0
-            slo.summary.return_value = {"global_p99_ttft_ms": 0.0}
-            pq.size.return_value = 0
-            lm.get_stats.return_value = []
-
+            cb_states=[{"worker_id": "w1", "state": "open"}],
+            memory_pressure=0.9,  # 90% pressure → score 10 → degraded
+            requests_total=100.0,
+            errors_total=0.0,
+            p99_ttft_ms=0.0,
+            queue_size=0,
+        ):
             report = scorer.compute()
 
         assert "circuit_breakers" in report.degraded_factors
@@ -187,27 +289,13 @@ class TestClusterHealthScorer:
     def test_history_grows_with_each_compute(self) -> None:
         scorer = self._make_scorer()
 
-        with (
-            patch("exo.master.health_score.CIRCUIT_BREAKERS") as cb,
-            patch("exo.master.health_score.MEMORY_MONITOR") as mm,
-            patch("exo.master.health_score.METRICS") as met,
-            patch("exo.master.health_score.SLO_TRACKER") as slo,
-            patch("exo.master.health_score.PRIORITY_QUEUE") as pq,
-            patch("exo.master.health_score.LINK_MONITOR") as lm,
-            patch("exo.master.health_score.emit_cluster_event"),
+        with _patched_singletons(
+            requests_total=10.0, errors_total=0.0, p99_ttft_ms=0.0, queue_size=5
         ):
-            cb.all_states.return_value = []
-            mm.current_pressure = 0.0
-            met.requests_total.get.return_value = 10.0
-            met.errors_total.get.return_value = 0.0
-            slo.summary.return_value = {"global_p99_ttft_ms": 0.0}
-            pq.size.return_value = 5
-            lm.get_stats.return_value = []
-
             scorer.compute()
             scorer.compute()
             scorer.compute()
 
-        assert len(scorer._history) == 3
+        assert scorer.history_len == 3
         assert scorer.current() is not None
         assert len(scorer.trend(2)) == 2

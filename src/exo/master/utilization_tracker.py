@@ -16,18 +16,37 @@ import sys
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TypedDict
 
 from loguru import logger
 
+_has_psutil: bool
 try:
     import psutil as _psutil
 
-    _HAS_PSUTIL = True
+    _has_psutil = True
 except ImportError:
-    _psutil = None  # type: ignore[assignment]
-    _HAS_PSUTIL = False
+    _psutil = None
+    _has_psutil = False
     logger.debug("psutil not available — CPU/memory utilization reporting limited")
+
+
+class LatestSample(TypedDict):
+    cpu_pct: float
+    memory_pct: float
+    gpu_pct: float | None
+    gpu_memory_gb: float | None
+    timestamp: float
+
+
+class UtilizationSnapshot(TypedDict):
+    node_id: str
+    sample_count: int
+    avg_cpu_pct: float
+    avg_memory_pct: float
+    avg_gpu_pct: float | None
+    peak_cpu_pct: float
+    latest: LatestSample | None
 
 
 @dataclass
@@ -89,18 +108,10 @@ class NodeUtilization:
             return 0.0
         return max(s.cpu_pct for s in samples)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> UtilizationSnapshot:
         latest = self._samples[-1] if self._samples else None
-        return {
-            "node_id": self.node_id,
-            "sample_count": len(self._samples),
-            "avg_cpu_pct": round(self.avg_cpu_pct, 2),
-            "avg_memory_pct": round(self.avg_memory_pct, 2),
-            "avg_gpu_pct": round(self.avg_gpu_pct, 2)
-            if self.avg_gpu_pct is not None
-            else None,
-            "peak_cpu_pct": round(self.peak_cpu_pct, 2),
-            "latest": {
+        latest_snapshot: LatestSample | None = (
+            {
                 "cpu_pct": round(latest.cpu_pct, 2),
                 "memory_pct": round(latest.memory_pct, 2),
                 "gpu_pct": round(latest.gpu_pct, 2)
@@ -111,8 +122,19 @@ class NodeUtilization:
                 else None,
                 "timestamp": latest.timestamp,
             }
-            if latest
+            if latest is not None
+            else None
+        )
+        return {
+            "node_id": self.node_id,
+            "sample_count": len(self._samples),
+            "avg_cpu_pct": round(self.avg_cpu_pct, 2),
+            "avg_memory_pct": round(self.avg_memory_pct, 2),
+            "avg_gpu_pct": round(self.avg_gpu_pct, 2)
+            if self.avg_gpu_pct is not None
             else None,
+            "peak_cpu_pct": round(self.peak_cpu_pct, 2),
+            "latest": latest_snapshot,
         }
 
 
@@ -146,7 +168,7 @@ class UtilizationTracker:
 
     @staticmethod
     def _read_cpu() -> float:
-        if not _HAS_PSUTIL:
+        if not _has_psutil or _psutil is None:
             return 0.0
         try:
             return _psutil.cpu_percent(interval=0.1)
@@ -156,7 +178,7 @@ class UtilizationTracker:
 
     @staticmethod
     def _read_memory() -> float:
-        if not _HAS_PSUTIL:
+        if not _has_psutil or _psutil is None:
             return 0.0
         try:
             return _psutil.virtual_memory().percent
@@ -226,7 +248,7 @@ class UtilizationTracker:
     def get_node(self, node_id: str) -> NodeUtilization | None:
         return self._nodes.get(node_id)
 
-    def all_stats(self) -> list[dict[str, Any]]:
+    def all_stats(self) -> list[UtilizationSnapshot]:
         return [node.to_dict() for node in self._nodes.values()]
 
     # ------------------------------------------------------------------ #
