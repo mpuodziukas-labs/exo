@@ -1,7 +1,9 @@
 # pyright: reportUnusedFunction=false, reportAny=false
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -28,7 +30,8 @@ def test_cancel_nonexistent_command_returns_404() -> None:
     api = _make_api()
     client = TestClient(api.app)
 
-    response = client.post("/v1/cancel/nonexistent-id")
+    post = cast(Callable[..., httpx.Response], client.post)
+    response = post("/v1/cancel/nonexistent-id")
     assert response.status_code == 404
     data: dict[str, Any] = response.json()
     assert "error" in data
@@ -46,7 +49,8 @@ def test_cancel_active_text_generation() -> None:
     sender = MagicMock()
     api._text_generation_queues[cid] = sender
 
-    response = client.post(f"/v1/cancel/{cid}")
+    post = cast(Callable[..., httpx.Response], client.post)
+    response = post(f"/v1/cancel/{cid}")
     assert response.status_code == 200
     data: dict[str, Any] = response.json()
     assert data["message"] == "Command cancelled."
@@ -66,7 +70,8 @@ def test_cancel_active_image_generation() -> None:
     sender = MagicMock()
     api._image_generation_queues[cid] = sender
 
-    response = client.post(f"/v1/cancel/{cid}")
+    post = cast(Callable[..., httpx.Response], client.post)
+    response = post(f"/v1/cancel/{cid}")
     assert response.status_code == 200
     data: dict[str, Any] = response.json()
     assert data["message"] == "Command cancelled."
