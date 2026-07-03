@@ -18,13 +18,14 @@ from typing import Any
 
 from loguru import logger
 
+_has_httpx: bool
 try:
     import httpx as _httpx
 
-    _HAS_HTTPX = True
+    _has_httpx = True
 except ImportError:
-    _httpx = None  # type: ignore[assignment]
-    _HAS_HTTPX = False
+    _httpx = None
+    _has_httpx = False
     logger.debug("httpx not available — webhook notifications disabled")
 
 _EVENT_TYPES = frozenset(
@@ -131,7 +132,7 @@ class WebhookNotifier:
 
     def notify(self, event_type: str, payload: dict[str, Any]) -> None:
         """Fire-and-forget: schedules HTTP delivery without blocking the caller."""
-        if not _HAS_HTTPX or not self._webhooks:
+        if not _has_httpx or not self._webhooks:
             return
         try:
             loop = asyncio.get_running_loop()
@@ -152,6 +153,8 @@ class WebhookNotifier:
         )
 
         async def _send(wh: WebhookRegistration) -> None:
+            if _httpx is None:
+                return
             if event_type not in wh.events:
                 return
             headers: dict[str, str] = {"Content-Type": "application/json"}
