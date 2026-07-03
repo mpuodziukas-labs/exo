@@ -24,13 +24,13 @@ from exo.master.request_hedging import HedgingController
 
 def _enabled() -> HedgingController:
     ctrl = HedgingController()
-    ctrl._enabled = True
+    ctrl.enabled = True
     return ctrl
 
 
 def _disabled() -> HedgingController:
     ctrl = HedgingController()
-    ctrl._enabled = False
+    ctrl.enabled = False
     return ctrl
 
 
@@ -76,18 +76,18 @@ def test_maybe_hedge_uses_p95_when_delay_is_zero() -> None:
 def test_update_p95_ignores_non_positive_values() -> None:
     """update_p95 must not update the delay for zero or negative values."""
     ctrl = _enabled()
-    original = ctrl._p95_latency_ms
+    original = ctrl.p95_latency_ms
     ctrl.update_p95(0.0)
-    assert ctrl._p95_latency_ms == original
+    assert ctrl.p95_latency_ms == original
     ctrl.update_p95(-50.0)
-    assert ctrl._p95_latency_ms == original
+    assert ctrl.p95_latency_ms == original
 
 
 def test_update_p95_stores_positive_value() -> None:
     """update_p95 stores a valid positive p95."""
     ctrl = _enabled()
     ctrl.update_p95(800.0)
-    assert ctrl._p95_latency_ms == pytest.approx(800.0)
+    assert ctrl.p95_latency_ms == pytest.approx(800.0)
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +124,7 @@ async def test_primary_wins_when_fastest() -> None:
     )
     assert winner == "primary"
     assert result == "primary-result"
-    assert ctrl._stats.primary_wins == 1
+    assert ctrl.stats()["primary_wins"] == 1
 
 
 @pytest.mark.asyncio
@@ -145,7 +145,7 @@ async def test_hedge_wins_when_primary_is_slow() -> None:
     )
     assert winner == "hedge"
     assert result == "hedge-result"
-    assert ctrl._stats.hedge_wins == 1
+    assert ctrl.stats()["hedge_wins"] == 1
 
 
 @pytest.mark.asyncio
@@ -168,12 +168,12 @@ async def test_losing_task_is_cancelled() -> None:
         return "hedge"
 
     # delay=0: hedge fires immediately and wins; primary is the loser
-    result, winner = await ctrl.run_with_hedge(
+    _result, winner = await ctrl.run_with_hedge(
         slow_primary(), fast_hedge(), delay_ms=0.0
     )
     assert winner == "hedge"
     # stats.cancelled incremented synchronously by run_with_hedge
-    assert ctrl._stats.cancelled == 1
+    assert ctrl.stats()["cancelled"] == 1
 
 
 @pytest.mark.asyncio

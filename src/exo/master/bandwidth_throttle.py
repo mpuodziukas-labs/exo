@@ -32,7 +32,7 @@ class BandwidthBucket:
 
     # capacity in bytes
     @property
-    def _capacity_bytes(self) -> float:
+    def capacity_bytes(self) -> float:
         return self.capacity_mbps * 1e6 / 8
 
 
@@ -106,7 +106,7 @@ class BandwidthThrottler:
             bucket = self._buckets[node_id]
             now = time.monotonic()
             elapsed = now - bucket.last_refill
-            cap_bytes = bucket._capacity_bytes
+            cap_bytes = bucket.capacity_bytes
 
             # Refill proportionally to elapsed time.
             bucket.current_tokens = min(
@@ -155,7 +155,7 @@ class BandwidthThrottler:
             bucket = self._buckets.get(node_id)
             if bucket is None:
                 return 0.0
-            cap = bucket._capacity_bytes
+            cap = bucket.capacity_bytes
             if cap == 0:
                 return 0.0
             return max(0.0, min(1.0, 1.0 - bucket.current_tokens / cap))
@@ -165,7 +165,7 @@ class BandwidthThrottler:
         with self._lock:
             result: dict[str, object] = {}
             for node_id, bucket in self._buckets.items():
-                cap = bucket._capacity_bytes
+                cap = bucket.capacity_bytes
                 util = (
                     max(0.0, min(1.0, 1.0 - bucket.current_tokens / cap))
                     if cap
@@ -187,7 +187,7 @@ class BandwidthThrottler:
         ]
         with self._lock:
             for node_id, bucket in self._buckets.items():
-                cap = bucket._capacity_bytes
+                cap = bucket.capacity_bytes
                 util = (
                     max(0.0, min(1.0, 1.0 - bucket.current_tokens / cap))
                     if cap

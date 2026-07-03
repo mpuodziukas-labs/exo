@@ -10,6 +10,8 @@ Higher levels shed lower-priority traffic cumulatively:
 
 from __future__ import annotations
 
+from typing import cast
+
 from exo.master.load_shedder import LoadShedder, ShedLevel
 
 # ---------------------------------------------------------------------------
@@ -136,8 +138,9 @@ def test_set_level_records_history_on_change() -> None:
     shedder.set_level(ShedLevel.LIGHT)  # same level — should not add another event
 
     s = shedder.stats()
-    assert len(s["recent_events"]) == 1
-    assert s["recent_events"][0]["level"] == "light"
+    recent_events = cast(list[dict[str, object]], s["recent_events"])
+    assert len(recent_events) == 1
+    assert recent_events[0]["level"] == "light"
 
 
 def test_shed_count_accumulates() -> None:

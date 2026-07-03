@@ -3,9 +3,33 @@ from __future__ import annotations
 import platform
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, cast
 
 from loguru import logger
+
+
+class _CudaDeviceProps(Protocol):
+    """Static shape for the fields read off torch's device-properties object.
+
+    torch's own stub types the return of ``get_device_properties`` via a
+    conditionally-assigned class (dummy fallback when built without CUDA),
+    which basedpyright can't narrow — this Protocol pins the two fields this
+    module actually reads so the CUDA tflops estimate stays typed.
+    """
+
+    multi_processor_count: int
+    max_clock_rate: int
+
+
+class _CudaModule(Protocol):
+    """Static shape for the ``torch.cuda`` submodule surface this file calls.
+
+    ``get_device_properties`` returns a conditionally-assigned dummy type
+    when torch is built without CUDA, which basedpyright can't narrow through
+    — this Protocol pins the one call this module makes.
+    """
+
+    def get_device_properties(self, device: int) -> _CudaDeviceProps: ...
 
 
 @dataclass
@@ -51,7 +75,7 @@ def _detect_local_capabilities(node_id: str) -> NodeCapabilityAnnouncement:
 
     # RAM detection
     try:
-        import psutil  # type: ignore[import-untyped]
+        import psutil
 
         total_ram_gb = psutil.virtual_memory().total / (1024**3)
     except ImportError:
@@ -71,7 +95,7 @@ def _detect_local_capabilities(node_id: str) -> NodeCapabilityAnnouncement:
 
     # MLX detection
     try:
-        import mlx.core as mx  # type: ignore[import-untyped]
+        import mlx.core as mx
 
         mlx_available = True
         device_type = "apple_silicon"
@@ -82,12 +106,13 @@ def _detect_local_capabilities(node_id: str) -> NodeCapabilityAnnouncement:
 
     # CUDA detection
     try:
-        import torch  # type: ignore[import-untyped]
+        import torch
 
         cuda_available = torch.cuda.is_available()
         if cuda_available:
             device_type = "cuda"
-            props = torch.cuda.get_device_properties(0)
+            cuda = cast(_CudaModule, cast(Any, torch.cuda))
+            props = cuda.get_device_properties(0)
             compute_tflops = (
                 props.multi_processor_count * 128 * 2 * props.max_clock_rate * 1e-9
             )

@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Protocol, cast, runtime_checkable
 
 from loguru import logger
+
+
+@runtime_checkable
+class PrometheusSource(Protocol):
+    """Duck-typed shape any registered metrics source must satisfy."""
+
+    def prometheus_metrics(self) -> str: ...
 
 
 class PrometheusAggregator:
@@ -13,9 +20,9 @@ class PrometheusAggregator:
     """
 
     def __init__(self) -> None:
-        self._sources: dict[str, Any] = {}
+        self._sources: dict[str, PrometheusSource] = {}
 
-    def register(self, name: str, source: Any) -> None:
+    def register(self, name: str, source: PrometheusSource) -> None:
         if hasattr(source, "prometheus_metrics"):
             self._sources[name] = source
             logger.debug(f"PrometheusAggregator registered source={name}")
@@ -78,7 +85,7 @@ class PrometheusAggregator:
                 import importlib
 
                 mod = importlib.import_module(module_path)
-                source = getattr(mod, attr)
+                source = cast(PrometheusSource, getattr(mod, attr))
                 self.register(name, source)
                 registered += 1
             except Exception as exc:

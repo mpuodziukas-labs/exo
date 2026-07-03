@@ -5,7 +5,7 @@ import json
 import time
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -16,7 +16,7 @@ _lock = Lock()
 def _load() -> dict[str, Any]:
     if _REGISTRY_PATH.exists():
         try:
-            return json.loads(_REGISTRY_PATH.read_text())
+            return cast(dict[str, Any], json.loads(_REGISTRY_PATH.read_text()))
         except Exception as exc:
             logger.warning(f"[model_registry] failed to parse registry file: {exc}")
             return {}

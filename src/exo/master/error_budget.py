@@ -30,6 +30,11 @@ class EndpointErrorBudget:
         self._samples: deque[RequestSample] = deque()
         self._budget_alert_sent = False
 
+    @property
+    def budget_alert_sent(self) -> bool:
+        """Whether the >50%-consumed alert is currently latched for this endpoint."""
+        return self._budget_alert_sent
+
     def _trim(self) -> None:
         cutoff = time.time() - _WINDOW_SECONDS
         while self._samples and self._samples[0].timestamp < cutoff:

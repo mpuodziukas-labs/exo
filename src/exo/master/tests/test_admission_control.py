@@ -11,6 +11,8 @@ Each rejected request increments rejected_total; admitted increments admitted_to
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from exo.master.admission_control import AdmissionController
@@ -166,4 +168,4 @@ def test_stats_counters_increment_correctly(monkeypatch: pytest.MonkeyPatch) -> 
     s = ctrl.stats()
     assert s["admitted_total"] == 2
     assert s["rejected_total"] == 1
-    assert abs(s["rejection_rate"] - 1 / 3) < 1e-3
+    assert abs(cast(float, s["rejection_rate"]) - 1 / 3) < 1e-3
