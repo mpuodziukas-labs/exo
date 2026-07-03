@@ -20,7 +20,7 @@ from __future__ import annotations
 import itertools
 import time
 from dataclasses import dataclass, field
-from typing import Any, Final, Literal, TypedDict
+from typing import Final, Literal, TypedDict, cast
 
 from loguru import logger
 
@@ -137,6 +137,18 @@ class TopologyStats(TypedDict):
     generated_at: float
 
 
+class LinkStatEntry(TypedDict):
+    """Shape of LinkHealthMonitor.NodeLinkStats.to_dict() entries."""
+
+    node_id: str
+    status: str
+    p50_latency_ms: float
+    p99_latency_ms: float
+    avg_throughput_mbps: float
+    sample_count: int
+    last_sample_ts: float
+
+
 # ---------------------------------------------------------------------------
 # Builder
 # ---------------------------------------------------------------------------
@@ -209,8 +221,8 @@ class TopologyGraphBuilder:
                 util_dict = node_util.to_dict()
                 latest = util_dict.get("latest")
                 if latest is not None:
-                    cpu_pct = latest["cpu_pct"]
-                    memory_pct = latest["memory_pct"]
+                    cpu_pct = float(latest["cpu_pct"])
+                    memory_pct = float(latest["memory_pct"])
                     gpu_pct = latest["gpu_pct"]  # None when unavailable
 
             # Node type
@@ -254,9 +266,11 @@ class TopologyGraphBuilder:
 
     def _build_edges(self, nodes: list[GraphNode]) -> list[GraphEdge]:
         """One directed edge per ordered node pair using LINK_MONITOR stats."""
-        link_stats: dict[str, dict[str, Any]] = {
-            s["node_id"] if isinstance(s["node_id"], str) else "": s
-            for s in LINK_MONITOR.get_stats()
+        # LINK_MONITOR.get_stats() is typed list[dict[str, Any]]; the entries
+        # have the fixed NodeLinkStats.to_dict() shape, asserted here once.
+        stat_entries = cast("list[LinkStatEntry]", LINK_MONITOR.get_stats())
+        link_stats: dict[str, LinkStatEntry] = {
+            str(s["node_id"]): s for s in stat_entries
         }
         node_ids = [n.id for n in nodes]
         edges: list[GraphEdge] = []
@@ -264,21 +278,13 @@ class TopologyGraphBuilder:
         for source_id, target_id in itertools.permutations(node_ids, 2):
             # Use target's link stats (the monitor tracks per-target latency)
             stats = link_stats.get(target_id)
-            latency_ms: float = (
-                stats["p50_latency_ms"]
-                if stats and isinstance(stats["p50_latency_ms"], float)
-                else 0.0
-            )
+            # float()/str() coercion: raw samples can be int-valued at runtime
+            # (e.g. p50 of integer-ms samples); never zero real data.
+            latency_ms: float = float(stats["p50_latency_ms"]) if stats else 0.0
             throughput_mbps: float = (
-                stats["avg_throughput_mbps"]
-                if stats and isinstance(stats["avg_throughput_mbps"], float)
-                else 0.0
+                float(stats["avg_throughput_mbps"]) if stats else 0.0
             )
-            edge_health: str = (
-                stats["status"]
-                if stats and isinstance(stats["status"], str)
-                else "unknown"
-            )
+            edge_health: str = str(stats["status"]) if stats else "unknown"
 
             link_type: LinkType = (
                 "tb4"
