@@ -1,6 +1,8 @@
 # pyright: reportUnusedFunction=false, reportAny=false
-from typing import Any
+from collections.abc import Callable
+from typing import Any, cast
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
@@ -27,9 +29,10 @@ def test_http_exception_handler_formats_openai_style() -> None:
         raise HTTPException(status_code=404, detail="Resource not found")
 
     client = TestClient(app)
+    get = cast(Callable[..., httpx.Response], client.get)
 
     # Test 500 error
-    response = client.get("/test-error")
+    response = get("/test-error")
     assert response.status_code == 500
     data: dict[str, Any] = response.json()
     assert "error" in data
@@ -38,7 +41,7 @@ def test_http_exception_handler_formats_openai_style() -> None:
     assert data["error"]["code"] == 500
 
     # Test 404 error
-    response = client.get("/test-not-found")
+    response = get("/test-not-found")
     assert response.status_code == 404
     data = response.json()
     assert "error" in data
