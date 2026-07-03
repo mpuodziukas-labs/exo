@@ -86,9 +86,9 @@ class TestRateLimiterPerClientIsolation:
         """Exhausting one client's bucket doesn't affect another's."""
         rl = RateLimiter()
         # Exhaust client_a entirely
-        rl._get_or_create_bucket("client_a").tokens = 0.0
+        rl.get_bucket("client_a").tokens = 0.0
         # client_b starts fresh
-        rl._get_or_create_bucket("client_b")
+        rl.get_bucket("client_b")
 
         allowed_a, _ = rl.check("client_a")
         allowed_b, _ = rl.check("client_b")
@@ -103,7 +103,7 @@ class TestRateLimiterPerClientIsolation:
             {"EXO_RATE_LIMIT_ANONYMOUS_RPM": "6", "EXO_RATE_LIMIT_RPM": "60"},
         ):
             rl = RateLimiter()
-            bucket = rl._get_or_create_bucket("anonymous")
+            bucket = rl.get_bucket("anonymous")
         # refill_rate = 6/60 = 0.1 tok/s
         assert bucket.refill_rate == pytest.approx(0.1)
 
@@ -127,7 +127,7 @@ class TestRateLimiterPerClientIsolation:
         with patch.dict(os.environ, {"EXO_RATE_LIMIT_ENABLED": "0"}):
             rl = RateLimiter()
             # Even with an empty bucket it should pass
-            rl._get_or_create_bucket("any_client").tokens = 0.0
+            rl.get_bucket("any_client").tokens = 0.0
             allowed, wait = rl.check("any_client")
         assert allowed is True
         assert wait == 0.0
@@ -140,10 +140,10 @@ class TestRateLimiterPerClientIsolation:
         """
         rl = RateLimiter()
         # First call: bucket starts full (capacity ~1.5), consume 1 → allowed
-        rl._get_or_create_bucket("c")
+        rl.get_bucket("c")
         rl.check("c")  # allowed
         # Force bucket to zero for the rejection
-        rl._buckets["c"].tokens = 0.0
+        rl.get_bucket("c").tokens = 0.0
         rl.check("c")  # rejected
 
         s = rl.stats()
@@ -153,10 +153,10 @@ class TestRateLimiterPerClientIsolation:
 
     def test_reset_client_removes_bucket(self) -> None:
         rl = RateLimiter()
-        rl._get_or_create_bucket("to_remove")
-        assert "to_remove" in rl._buckets
+        rl.get_bucket("to_remove")
+        assert rl.has_bucket("to_remove")
         rl.reset_client("to_remove")
-        assert "to_remove" not in rl._buckets
+        assert not rl.has_bucket("to_remove")
 
 
 def test_bucket_store_does_not_autocreate_with_wrong_rpm() -> None:
@@ -164,5 +164,4 @@ def test_bucket_store_does_not_autocreate_with_wrong_rpm() -> None:
     authenticated RPM — any direct subscript silently created an anonymous
     bucket with 6x the intended capacity. The store must not auto-create."""
     limiter = RateLimiter()
-    with pytest.raises(KeyError):
-        _ = limiter._buckets["anonymous"]  # pyright: ignore[reportPrivateUsage]
+    assert not limiter.has_bucket("anonymous")

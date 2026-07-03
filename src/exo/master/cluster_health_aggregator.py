@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Callable, TypeVar, cast
 
 from loguru import logger
 
+_T = TypeVar("_T")
 
-def _safe(fn: Any, default: Any = None) -> Any:
+
+def _safe(fn: Callable[[], _T], default: _T | None = None) -> _T | None:
     try:
         return fn()
     except Exception as exc:
@@ -35,7 +37,7 @@ class ClusterHealthAggregator:
         ok_count = sum(
             1
             for v in subsystems.values()
-            if isinstance(v, dict) and v.get("status") != "error"
+            if isinstance(v, dict) and cast(dict[str, object], v).get("status") != "error"
         )
         total = len(subsystems)
         report["overall_health"] = (
@@ -48,13 +50,13 @@ class ClusterHealthAggregator:
 
         return report
 
-    def _collect_subsystems(self) -> dict[str, Any]:
-        results: dict[str, Any] = {}
+    def _collect_subsystems(self) -> dict[str, object]:
+        results: dict[str, object] = {}
 
         try:
             from exo.master.pipeline_health import PIPELINE_HEALTH
 
-            results["pipeline"] = _safe(lambda: PIPELINE_HEALTH.report())
+            results["pipeline"] = _safe(lambda: PIPELINE_HEALTH.compute())
         except ImportError as exc:
             logger.debug(
                 "ClusterHealthAggregator: pipeline_health not available: {}", exc
@@ -63,30 +65,30 @@ class ClusterHealthAggregator:
         try:
             from exo.master.error_budget import ERROR_BUDGET
 
-            results["error_budget"] = _safe(lambda: ERROR_BUDGET.status())
+            results["error_budget"] = _safe(lambda: ERROR_BUDGET.get_summary())
         except ImportError as exc:
             logger.debug("ClusterHealthAggregator: error_budget not available: {}", exc)
 
         try:
             from exo.master.graceful_degradation import DEGRADATION_CONTROLLER
 
-            results["degradation"] = _safe(lambda: DEGRADATION_CONTROLLER.status())
+            results["degradation"] = _safe(lambda: DEGRADATION_CONTROLLER.get_status())
         except ImportError as exc:
             logger.debug(
                 "ClusterHealthAggregator: graceful_degradation not available: {}", exc
             )
 
         try:
-            from exo.master.quorum_check import QUORUM_CHECK
+            from exo.master.quorum_check import QUORUM_CHECKER
 
-            results["quorum"] = _safe(lambda: QUORUM_CHECK.status())
+            results["quorum"] = _safe(lambda: QUORUM_CHECKER.get_status())
         except ImportError as exc:
             logger.debug("ClusterHealthAggregator: quorum_check not available: {}", exc)
 
         try:
             from exo.master.anomaly_detector import ANOMALY_DETECTOR
 
-            results["anomaly_detector"] = _safe(lambda: ANOMALY_DETECTOR.status())
+            results["anomaly_detector"] = _safe(lambda: ANOMALY_DETECTOR.get_stats())
         except ImportError as exc:
             logger.debug(
                 "ClusterHealthAggregator: anomaly_detector not available: {}", exc

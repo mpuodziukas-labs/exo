@@ -21,15 +21,14 @@ class DedupEntry:
     key: str
     first_trace_id: str
     waiters: list[asyncio.Future[Any]] = field(default_factory=list)
-    result: Any = None
+    result: object = None
     exception: BaseException | None = None
     created_at: float = field(default_factory=time.monotonic)
     completed: bool = False
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
-    @property
-    def is_expired(self) -> bool:
-        return (time.monotonic() - self.created_at) > _DEDUP_TTL
+    def is_expired(self, ttl_seconds: float = _DEDUP_TTL) -> bool:
+        return (time.monotonic() - self.created_at) > ttl_seconds
 
 
 def compute_dedup_key(
@@ -69,6 +68,15 @@ class RequestDeduplicator:
         self._entries: dict[str, DedupEntry] = {}
         self._global_lock: asyncio.Lock = asyncio.Lock()
         self._hits: int = 0
+        self._ttl_seconds: float = _DEDUP_TTL
+
+    def configure(self, *, ttl_seconds: float) -> None:
+        """Override the in-flight entry TTL (e.g. from hot-reloaded config)."""
+        self._ttl_seconds = ttl_seconds
+
+    def get_entry(self, key: str) -> DedupEntry | None:
+        """Public accessor for the in-flight entry registered under `key`."""
+        return self._entries.get(key)
 
     async def get_or_create(
         self, key: str, trace_id: str
@@ -83,7 +91,7 @@ class RequestDeduplicator:
         async with self._global_lock:
             entry = self._entries.get(key)
 
-            if entry is not None and not entry.is_expired:
+            if entry is not None and not entry.is_expired(self._ttl_seconds):
                 # Already in-flight: subscribe a new waiter
                 loop = asyncio.get_event_loop()
                 waiter: asyncio.Future[Any] = loop.create_future()
@@ -110,7 +118,7 @@ class RequestDeduplicator:
             logger.debug(f"[dedup] NEW key={key[:8]} trace={trace_id}")
             return True, primary
 
-    def complete(self, key: str, result: Any) -> None:
+    def complete(self, key: str, result: object) -> None:
         """Resolve all waiters with result and mark entry completed."""
         entry = self._entries.get(key)
         if entry is None:
@@ -135,7 +143,7 @@ class RequestDeduplicator:
         logger.debug(f"[dedup] FAIL key={key[:8]} exc={exc!r}")
 
     def cleanup_expired(self) -> int:
-        expired = [k for k, e in self._entries.items() if e.is_expired]
+        expired = [k for k, e in self._entries.items() if e.is_expired(self._ttl_seconds)]
         for k in expired:
             entry = self._entries.pop(k)
             # Cancel any still-pending waiters so callers don't hang
@@ -150,7 +158,7 @@ class RequestDeduplicator:
         return {
             "active_entries": len(self._entries),
             "hits_total": self._hits,
-            "ttl_seconds": _DEDUP_TTL,
+            "ttl_seconds": self._ttl_seconds,
         }
 
 
@@ -200,10 +208,11 @@ class RequestDedup:
     Hard cap at _MAX_ENTRIES via LRU eviction.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, max_entries: int | None = None) -> None:
         self._cache: OrderedDict[str, IdempotencyEntry] = OrderedDict()
         self._hits = 0
         self._misses = 0
+        self._max_entries: int = _MAX_ENTRIES if max_entries is None else max_entries
 
     def _evict_expired(self) -> None:
         expired_keys = [k for k, v in self._cache.items() if v.expired]
@@ -211,7 +220,7 @@ class RequestDedup:
             del self._cache[k]
 
     def _enforce_cap(self) -> None:
-        while len(self._cache) >= _MAX_ENTRIES:
+        while len(self._cache) >= self._max_entries:
             self._cache.popitem(last=False)  # LRU eviction
 
     @staticmethod
@@ -246,7 +255,7 @@ class RequestDedup:
         self._evict_expired()
         return {
             "entries": len(self._cache),
-            "max_entries": _MAX_ENTRIES,
+            "max_entries": self._max_entries,
             "hits": self._hits,
             "misses": self._misses,
             "hit_rate": round(self._hits / max(self._hits + self._misses, 1), 4),

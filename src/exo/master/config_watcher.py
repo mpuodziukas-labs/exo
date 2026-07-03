@@ -23,7 +23,7 @@ import json
 import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from loguru import logger
 
@@ -55,9 +55,62 @@ _CONFIG_PATH: Path = Path(os.path.expanduser("~/.exo/config.json"))
 
 def _load_from_dict(raw: dict[str, Any]) -> ExoConfig:
     """Merge raw JSON dict with ExoConfig defaults; unknown keys are silently dropped."""
-    known = {f.name for f in dataclasses.fields(ExoConfig)}
-    filtered = {k: v for k, v in raw.items() if k in known}
-    return ExoConfig(**filtered)
+    d = ExoConfig()
+    return ExoConfig(
+        rate_limit_rpm_authenticated=int(
+            cast(
+                int,
+                raw.get(
+                    "rate_limit_rpm_authenticated", d.rate_limit_rpm_authenticated
+                ),
+            )
+        ),
+        rate_limit_rpm_anonymous=int(
+            cast(
+                int, raw.get("rate_limit_rpm_anonymous", d.rate_limit_rpm_anonymous)
+            )
+        ),
+        ttft_slo_ms=float(cast(float, raw.get("ttft_slo_ms", d.ttft_slo_ms))),
+        admission_max_concurrent=int(
+            cast(
+                int,
+                raw.get("admission_max_concurrent", d.admission_max_concurrent),
+            )
+        ),
+        canary_percent=float(
+            cast(float, raw.get("canary_percent", d.canary_percent))
+        ),
+        canary_model=str(cast(str, raw.get("canary_model", d.canary_model))),
+        circuit_breaker_failure_threshold=int(
+            cast(
+                int,
+                raw.get(
+                    "circuit_breaker_failure_threshold",
+                    d.circuit_breaker_failure_threshold,
+                ),
+            )
+        ),
+        circuit_breaker_cooldown_seconds=float(
+            cast(
+                float,
+                raw.get(
+                    "circuit_breaker_cooldown_seconds",
+                    d.circuit_breaker_cooldown_seconds,
+                ),
+            )
+        ),
+        checkpoint_every_n_tokens=int(
+            cast(
+                int,
+                raw.get("checkpoint_every_n_tokens", d.checkpoint_every_n_tokens),
+            )
+        ),
+        record_rate=float(cast(float, raw.get("record_rate", d.record_rate))),
+        dedup_ttl_seconds=float(
+            cast(float, raw.get("dedup_ttl_seconds", d.dedup_ttl_seconds))
+        ),
+        quorum_min=int(cast(int, raw.get("quorum_min", d.quorum_min))),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -89,7 +142,9 @@ class ConfigWatcher:
         from exo.master.config_validator import CONFIG_VALIDATOR
 
         try:
-            raw: dict[str, Any] = json.loads(self._config_path.read_text())
+            raw: dict[str, Any] = cast(
+                "dict[str, Any]", json.loads(self._config_path.read_text())
+            )
         except FileNotFoundError:
             logger.warning(
                 f"[config_watcher] {self._config_path} not found; using defaults"
@@ -209,8 +264,10 @@ class ConfigWatcher:
         try:
             from exo.master.rate_limiter import RATE_LIMITER
 
-            RATE_LIMITER._authenticated_rpm = cfg.rate_limit_rpm_authenticated
-            RATE_LIMITER._anonymous_rpm = cfg.rate_limit_rpm_anonymous
+            RATE_LIMITER.configure(
+                authenticated_rpm=cfg.rate_limit_rpm_authenticated,
+                anonymous_rpm=cfg.rate_limit_rpm_anonymous,
+            )
             logger.debug(
                 f"[config_watcher] rate_limiter auth={cfg.rate_limit_rpm_authenticated} "
                 f"anon={cfg.rate_limit_rpm_anonymous}"
@@ -222,7 +279,7 @@ class ConfigWatcher:
         try:
             from exo.master.slo_tracker import SLO_TRACKER
 
-            SLO_TRACKER._slo_threshold = cfg.ttft_slo_ms
+            SLO_TRACKER.configure(slo_threshold_ms=cfg.ttft_slo_ms)
             logger.debug(f"[config_watcher] slo_tracker threshold={cfg.ttft_slo_ms}ms")
         except Exception as exc:
             logger.warning(f"[config_watcher] slo_tracker apply failed: {exc}")
@@ -231,7 +288,9 @@ class ConfigWatcher:
         try:
             from exo.master.admission_control import ADMISSION_CONTROLLER
 
-            ADMISSION_CONTROLLER._max_concurrent_requests = cfg.admission_max_concurrent
+            ADMISSION_CONTROLLER.configure(
+                max_concurrent_requests=cfg.admission_max_concurrent
+            )
             logger.debug(
                 f"[config_watcher] admission_controller max_concurrent={cfg.admission_max_concurrent}"
             )
@@ -242,16 +301,9 @@ class ConfigWatcher:
         try:
             from exo.master.circuit_breaker import CIRCUIT_BREAKERS
 
-            with CIRCUIT_BREAKERS._lock:
-                for breaker in CIRCUIT_BREAKERS._breakers.values():
-                    breaker.failure_threshold = cfg.circuit_breaker_failure_threshold
-                    breaker.cooldown_seconds = cfg.circuit_breaker_cooldown_seconds
-            # Also update defaults for breakers created in future
-            CIRCUIT_BREAKERS._default_failure_threshold = (
-                cfg.circuit_breaker_failure_threshold
-            )
-            CIRCUIT_BREAKERS._default_cooldown_seconds = (
-                cfg.circuit_breaker_cooldown_seconds
+            CIRCUIT_BREAKERS.configure(
+                failure_threshold=cfg.circuit_breaker_failure_threshold,
+                cooldown_seconds=cfg.circuit_breaker_cooldown_seconds,
             )
             logger.debug(
                 f"[config_watcher] circuit_breakers failure_threshold="
@@ -265,7 +317,7 @@ class ConfigWatcher:
         try:
             from exo.master.request_dedup import DEDUP
 
-            DEDUP._ttl_seconds = cfg.dedup_ttl_seconds
+            DEDUP.configure(ttl_seconds=cfg.dedup_ttl_seconds)
             logger.debug(f"[config_watcher] dedup ttl={cfg.dedup_ttl_seconds}s")
         except Exception as exc:
             logger.warning(f"[config_watcher] dedup apply failed: {exc}")
@@ -274,7 +326,7 @@ class ConfigWatcher:
         try:
             from exo.master.quorum_check import QUORUM_CHECKER
 
-            QUORUM_CHECKER._min_quorum = cfg.quorum_min
+            QUORUM_CHECKER.configure(min_quorum=cfg.quorum_min)
             logger.info(f"[config_watcher] quorum_checker min_quorum={cfg.quorum_min}")
         except Exception as exc:
             logger.warning(f"[config_watcher] quorum_checker apply failed: {exc}")
