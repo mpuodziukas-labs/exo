@@ -9,11 +9,9 @@ Singletons touched:
   RATE_LIMITER          rate_limit_rpm_authenticated / rate_limit_rpm_anonymous
   SLO_TRACKER           ttft_slo_ms
   ADMISSION_CONTROLLER  admission_max_concurrent
-  CANARY_ROUTER         canary_percent / canary_model
   CIRCUIT_BREAKERS      failure_threshold / cooldown_seconds on each breaker
-  CHECKPOINT_MANAGER    checkpoint_every_n_tokens  (lazy import; worker process)
-  RECORDER              sample_rate
   DEDUP                 _ttl_seconds (module-level override via attribute)
+  QUORUM_CHECKER        quorum_min
 """
 
 from __future__ import annotations
@@ -155,8 +153,8 @@ class ConfigWatcher:
     def force_reload(self) -> ExoConfig:
         """Force an immediate reload from disk regardless of mtime.
 
-        Applies the new config to all singletons, broadcasts to peer nodes via
-        CONFIG_BROADCASTER, and returns the active config after reload.
+        Applies the new config to all singletons and returns the active config
+        after reload.
         Never raises: errors are logged and the previous config is kept.
         """
         new_config = self.load()
@@ -169,23 +167,7 @@ class ConfigWatcher:
                 self._last_mtime = self._config_path.stat().st_mtime
         else:
             logger.info("[config_watcher] force_reload — config unchanged")
-        self._broadcast_async(new_config)
         return self._config
-
-    def _broadcast_async(self, cfg: ExoConfig) -> None:
-        """Schedule a broadcast to peer nodes on the running event loop (best-effort)."""
-        import dataclasses
-
-        try:
-            from exo.master.config_broadcast import CONFIG_BROADCASTER
-
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(  # type: ignore[unused-coroutine]
-                    CONFIG_BROADCASTER.broadcast(dataclasses.asdict(cfg))
-                )
-        except Exception as exc:
-            logger.warning(f"[config_watcher] broadcast scheduling failed: {exc}")
 
     def _check_and_reload(self) -> None:
         try:
@@ -204,7 +186,6 @@ class ConfigWatcher:
         logger.info(f"[config_watcher] reloading config — changed fields: {changed}")
         self._apply(new_config)
         self._config = new_config
-        self._broadcast_async(new_config)
 
     @staticmethod
     def _diff(old: ExoConfig, new: ExoConfig) -> list[str]:
@@ -257,20 +238,6 @@ class ConfigWatcher:
         except Exception as exc:
             logger.warning(f"[config_watcher] admission_controller apply failed: {exc}")
 
-        # ---- Canary router ----------------------------------------------
-        try:
-            from exo.master.canary import CANARY_ROUTER
-
-            CANARY_ROUTER.canary_percent = int(cfg.canary_percent)
-            CANARY_ROUTER.canary_model = cfg.canary_model
-            CANARY_ROUTER.enabled = bool(cfg.canary_model)
-            logger.debug(
-                f"[config_watcher] canary model={cfg.canary_model!r} "
-                f"percent={cfg.canary_percent}"
-            )
-        except Exception as exc:
-            logger.warning(f"[config_watcher] canary_router apply failed: {exc}")
-
         # ---- Circuit breakers -------------------------------------------
         try:
             from exo.master.circuit_breaker import CIRCUIT_BREAKERS
@@ -293,30 +260,6 @@ class ConfigWatcher:
             )
         except Exception as exc:
             logger.warning(f"[config_watcher] circuit_breakers apply failed: {exc}")
-
-        # ---- Checkpoint manager (worker-side; may not be importable on master) ---
-        try:
-            from exo.worker.runner.llm_inference.checkpoint_manager import (
-                CHECKPOINT_MANAGER,
-            )
-
-            CHECKPOINT_MANAGER.checkpoint_every_n_tokens = cfg.checkpoint_every_n_tokens
-            logger.debug(
-                f"[config_watcher] checkpoint_manager every_n_tokens={cfg.checkpoint_every_n_tokens}"
-            )
-        except ImportError:
-            pass  # Master-only process; checkpoint manager lives in worker
-        except Exception as exc:
-            logger.warning(f"[config_watcher] checkpoint_manager apply failed: {exc}")
-
-        # ---- Request recorder -------------------------------------------
-        try:
-            from exo.master.request_recorder import RECORDER
-
-            RECORDER.sample_rate = cfg.record_rate
-            logger.debug(f"[config_watcher] recorder sample_rate={cfg.record_rate}")
-        except Exception as exc:
-            logger.warning(f"[config_watcher] recorder apply failed: {exc}")
 
         # ---- Request deduplicator ---------------------------------------
         try:

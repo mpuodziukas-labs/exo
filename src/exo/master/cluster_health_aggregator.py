@@ -52,22 +52,6 @@ class ClusterHealthAggregator:
         results: dict[str, Any] = {}
 
         try:
-            from exo.master.election_stability import ELECTION_STABILITY
-
-            results["election_stability"] = _safe(lambda: ELECTION_STABILITY.status())
-        except ImportError as exc:
-            logger.debug(
-                "ClusterHealthAggregator: election_stability not available: {}", exc
-            )
-
-        try:
-            from exo.master.split_brain import SPLIT_BRAIN_DETECTOR
-
-            results["split_brain"] = _safe(lambda: SPLIT_BRAIN_DETECTOR.status())
-        except ImportError as exc:
-            logger.debug("ClusterHealthAggregator: split_brain not available: {}", exc)
-
-        try:
             from exo.master.pipeline_health import PIPELINE_HEALTH
 
             results["pipeline"] = _safe(lambda: PIPELINE_HEALTH.report())
@@ -122,38 +106,6 @@ class ClusterHealthAggregator:
         except ImportError as exc:
             logger.debug(
                 "ClusterHealthAggregator: autoscale_trigger not available: {}", exc
-            )
-
-        try:
-            from exo.master.slo_budget_tracker import SLO_BUDGET_TRACKER
-
-            results["slo_violations"] = _safe(
-                lambda: {"violations": SLO_BUDGET_TRACKER.violations()}
-            )
-        except ImportError as exc:
-            logger.debug(
-                "ClusterHealthAggregator: slo_budget_tracker not available: {}", exc
-            )
-
-        try:
-            from exo.master.mfu_reporter import MFU_REPORTER
-
-            results["mfu"] = _safe(lambda: MFU_REPORTER.latest())
-        except ImportError as exc:
-            logger.debug("ClusterHealthAggregator: mfu_reporter not available: {}", exc)
-
-        try:
-            from exo.master.kv_cache_tier import KV_CACHE_TIER
-
-            summary = _safe(lambda: KV_CACHE_TIER.tier_summary())
-            if summary:
-                results["kvcache"] = {
-                    "utilization": summary.get("utilization"),
-                    "entries": summary.get("total_entries"),
-                }
-        except ImportError as exc:
-            logger.debug(
-                "ClusterHealthAggregator: kv_cache_tier not available: {}", exc
             )
 
         return results
