@@ -13,6 +13,7 @@ statically concrete instead of Any.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterator
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -33,24 +34,50 @@ from exo.master.health_score import (
 
 class TestLerpScore:
     def test_at_or_below_perfect_returns_100(self) -> None:
-        assert lerp_score(300.0, perfect=300.0, zero=2000.0) == pytest.approx(100.0)
-        assert lerp_score(100.0, perfect=300.0, zero=2000.0) == pytest.approx(100.0)
+        assert math.isclose(
+            lerp_score(300.0, perfect=300.0, zero=2000.0),
+            100.0,
+            rel_tol=1e-6,
+            abs_tol=1e-12,
+        )
+        assert math.isclose(
+            lerp_score(100.0, perfect=300.0, zero=2000.0),
+            100.0,
+            rel_tol=1e-6,
+            abs_tol=1e-12,
+        )
 
     def test_at_or_above_zero_returns_0(self) -> None:
-        assert lerp_score(2000.0, perfect=300.0, zero=2000.0) == pytest.approx(0.0)
-        assert lerp_score(9999.0, perfect=300.0, zero=2000.0) == pytest.approx(0.0)
+        assert math.isclose(
+            lerp_score(2000.0, perfect=300.0, zero=2000.0),
+            0.0,
+            rel_tol=1e-6,
+            abs_tol=1e-12,
+        )
+        assert math.isclose(
+            lerp_score(9999.0, perfect=300.0, zero=2000.0),
+            0.0,
+            rel_tol=1e-6,
+            abs_tol=1e-12,
+        )
 
     def test_midpoint_returns_50(self) -> None:
         # midpoint of [300, 2000] is 1150
-        assert lerp_score(1150.0, perfect=300.0, zero=2000.0) == pytest.approx(
-            50.0, rel=1e-3
+        assert math.isclose(
+            lerp_score(1150.0, perfect=300.0, zero=2000.0),
+            50.0,
+            rel_tol=1e-3,
+            abs_tol=1e-12,
         )
 
     def test_interpolation_is_linear(self) -> None:
         """quarter-point should give 75."""
         # 300 + (2000-300)*0.25 = 725 → score should be 75
-        assert lerp_score(725.0, perfect=300.0, zero=2000.0) == pytest.approx(
-            75.0, rel=1e-3
+        assert math.isclose(
+            lerp_score(725.0, perfect=300.0, zero=2000.0),
+            75.0,
+            rel_tol=1e-3,
+            abs_tol=1e-12,
         )
 
 
@@ -207,9 +234,11 @@ class TestClusterHealthScorer:
         ]
 
         # Weights sum to 1.0; all scores are 100 → weighted sum = 100.0
-        assert sum(f.weight for f in factors) == pytest.approx(1.0)
+        assert math.isclose(
+            sum(f.weight for f in factors), 1.0, rel_tol=1e-6, abs_tol=1e-12
+        )
         overall = sum(f.score * f.weight for f in factors)
-        assert overall == pytest.approx(100.0)
+        assert math.isclose(overall, 100.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_weights_sum_to_one(self) -> None:
         """Documented weights must sum to 1.0 (integrity check)."""
@@ -221,7 +250,7 @@ class TestClusterHealthScorer:
             report = scorer.compute()
 
         total_weight = sum(f.weight for f in report.factors)
-        assert total_weight == pytest.approx(1.0)
+        assert math.isclose(total_weight, 1.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_open_circuit_breaker_gives_zero_cb_score(self) -> None:
         """When a circuit breaker is OPEN, circuit_breakers factor = 0."""
@@ -237,7 +266,7 @@ class TestClusterHealthScorer:
             report = scorer.compute()
 
         cb_factor = next(f for f in report.factors if f.name == "circuit_breakers")
-        assert cb_factor.score == pytest.approx(0.0)
+        assert math.isclose(cb_factor.score, 0.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_degraded_factors_collected_below_threshold(self) -> None:
         """Factors with score < 60 appear in degraded_factors list."""

@@ -143,7 +143,9 @@ class RequestDeduplicator:
         logger.debug(f"[dedup] FAIL key={key[:8]} exc={exc!r}")
 
     def cleanup_expired(self) -> int:
-        expired = [k for k, e in self._entries.items() if e.is_expired(self._ttl_seconds)]
+        expired = [
+            k for k, e in self._entries.items() if e.is_expired(self._ttl_seconds)
+        ]
         for k in expired:
             entry = self._entries.pop(k)
             # Cancel any still-pending waiters so callers don't hang

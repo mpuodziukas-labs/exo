@@ -12,6 +12,7 @@ latency.  Key behaviors:
 from __future__ import annotations
 
 import asyncio
+import math
 
 import pytest
 
@@ -65,7 +66,9 @@ def test_maybe_hedge_uses_p95_when_delay_is_zero() -> None:
     """maybe_hedge falls back to the stored p95 when delay_ms=0."""
     ctrl = _enabled()
     ctrl.update_p95(450.0)
-    assert ctrl.maybe_hedge("t5", delay_ms=0.0) == pytest.approx(450.0)
+    assert math.isclose(
+        ctrl.maybe_hedge("t5", delay_ms=0.0), 450.0, rel_tol=1e-6, abs_tol=1e-12
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +90,7 @@ def test_update_p95_stores_positive_value() -> None:
     """update_p95 stores a valid positive p95."""
     ctrl = _enabled()
     ctrl.update_p95(800.0)
-    assert ctrl.p95_latency_ms == pytest.approx(800.0)
+    assert math.isclose(ctrl.p95_latency_ms, 800.0, rel_tol=1e-6, abs_tol=1e-12)
 
 
 # ---------------------------------------------------------------------------

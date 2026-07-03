@@ -56,9 +56,7 @@ class BatchProcessor:
             messages_raw = cast(object, raw.get("messages", []))
             if not isinstance(messages_raw, list) or not messages_raw:
                 raise ValueError(f"item {item_id!r}: messages must be a non-empty list")
-            messages: list[dict[str, Any]] = cast(
-                list[dict[str, Any]], messages_raw
-            )
+            messages: list[dict[str, Any]] = cast(list[dict[str, Any]], messages_raw)
             model: str = str(cast(object, raw.get("model", "")))
             if not model:
                 raise ValueError(f"item {item_id!r}: model is required")

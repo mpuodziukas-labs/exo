@@ -60,15 +60,11 @@ def _load_from_dict(raw: dict[str, Any]) -> ExoConfig:
         rate_limit_rpm_authenticated=int(
             cast(
                 int,
-                raw.get(
-                    "rate_limit_rpm_authenticated", d.rate_limit_rpm_authenticated
-                ),
+                raw.get("rate_limit_rpm_authenticated", d.rate_limit_rpm_authenticated),
             )
         ),
         rate_limit_rpm_anonymous=int(
-            cast(
-                int, raw.get("rate_limit_rpm_anonymous", d.rate_limit_rpm_anonymous)
-            )
+            cast(int, raw.get("rate_limit_rpm_anonymous", d.rate_limit_rpm_anonymous))
         ),
         ttft_slo_ms=float(cast(float, raw.get("ttft_slo_ms", d.ttft_slo_ms))),
         admission_max_concurrent=int(
@@ -77,9 +73,7 @@ def _load_from_dict(raw: dict[str, Any]) -> ExoConfig:
                 raw.get("admission_max_concurrent", d.admission_max_concurrent),
             )
         ),
-        canary_percent=float(
-            cast(float, raw.get("canary_percent", d.canary_percent))
-        ),
+        canary_percent=float(cast(float, raw.get("canary_percent", d.canary_percent))),
         canary_model=str(cast(str, raw.get("canary_model", d.canary_model))),
         circuit_breaker_failure_threshold=int(
             cast(

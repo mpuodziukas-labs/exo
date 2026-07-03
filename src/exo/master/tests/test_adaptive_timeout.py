@@ -11,7 +11,7 @@ Fallback (< 10 samples) returns FALLBACK_TIMEOUT_S = 60.0.
 
 from __future__ import annotations
 
-import pytest
+import math
 
 from exo.master.adaptive_timeout import AdaptiveTimeoutCalculator
 
@@ -59,7 +59,7 @@ def test_base_timeout_computed_from_p99() -> None:
     for _ in range(15):
         calc.record(MODEL_A, 20.0)
     expected = max(MIN_TIMEOUT_S, min(MAX_TIMEOUT_S, 20.0 * SAFETY_MULTIPLIER))
-    assert calc.base_timeout(MODEL_A) == pytest.approx(expected, abs=0.01)
+    assert math.isclose(calc.base_timeout(MODEL_A), expected, rel_tol=0.0, abs_tol=0.01)
 
 
 def test_base_timeout_clamped_to_min() -> None:
@@ -105,7 +105,7 @@ def test_unknown_priority_defaults_to_normal_multiplier() -> None:
 
     unknown_t = calc.timeout_for(MODEL_A, "nonexistent")
     normal_t = calc.timeout_for(MODEL_A, "normal")
-    assert unknown_t == pytest.approx(normal_t, abs=0.01)
+    assert math.isclose(unknown_t, normal_t, rel_tol=0.0, abs_tol=0.01)
 
 
 # ---------------------------------------------------------------------------

@@ -13,10 +13,9 @@ Focuses on:
 
 from __future__ import annotations
 
+import math
 import time
 from unittest.mock import patch
-
-import pytest
 
 from exo.master.error_budget import EndpointErrorBudget, ErrorBudgetManager
 
@@ -27,8 +26,10 @@ class TestEndpointErrorBudgetMath:
         for _ in range(20):
             eb.record(success=True)
         d = eb.to_dict()
-        assert d["error_rate_pct"] == pytest.approx(0.0)
-        assert d["budget_consumed_pct"] == pytest.approx(0.0)
+        assert isinstance(d["error_rate_pct"], float)
+        assert isinstance(d["budget_consumed_pct"], float)
+        assert math.isclose(d["error_rate_pct"], 0.0, rel_tol=1e-6, abs_tol=1e-12)
+        assert math.isclose(d["budget_consumed_pct"], 0.0, rel_tol=1e-6, abs_tol=1e-12)
         assert d["slo_met"] is True
 
     def test_budget_consumed_pct_formula(self) -> None:
@@ -40,8 +41,10 @@ class TestEndpointErrorBudgetMath:
         for _ in range(5):
             eb.record(success=False)
         d = eb.to_dict()
-        assert d["error_rate_pct"] == pytest.approx(0.05, rel=1e-3)
-        assert d["budget_consumed_pct"] == pytest.approx(50.0, rel=1e-3)
+        assert isinstance(d["error_rate_pct"], float)
+        assert isinstance(d["budget_consumed_pct"], float)
+        assert math.isclose(d["error_rate_pct"], 0.05, rel_tol=1e-3, abs_tol=1e-12)
+        assert math.isclose(d["budget_consumed_pct"], 50.0, rel_tol=1e-3, abs_tol=1e-12)
 
     def test_slo_violated_above_0_1_percent_errors(self) -> None:
         """error_rate > 0.1% means SLO not met."""
@@ -59,7 +62,10 @@ class TestEndpointErrorBudgetMath:
         for _ in range(10):
             eb.record(success=False)  # 100% errors → consumed = 10000%, capped 100
         d = eb.to_dict()
-        assert d["budget_consumed_pct"] == pytest.approx(100.0)
+        assert isinstance(d["budget_consumed_pct"], float)
+        assert math.isclose(
+            d["budget_consumed_pct"], 100.0, rel_tol=1e-6, abs_tol=1e-12
+        )
 
     def test_no_alert_below_min_samples(self) -> None:
         """Budget alert is suppressed when fewer than 10 samples recorded."""

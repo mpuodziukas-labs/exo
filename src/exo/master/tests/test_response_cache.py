@@ -14,11 +14,10 @@ Focuses on:
 
 from __future__ import annotations
 
+import math
 import time
 from typing import Any
 from unittest.mock import patch
-
-import pytest
 
 from exo.master.response_cache import ResponseCache
 
@@ -118,7 +117,7 @@ class TestResponseCacheGetPut:
         cache.put("custom", "m", "{}", 1, 1, ttl_seconds=10.0)
         entry = cache.peek("custom")
         assert entry is not None
-        assert entry.ttl_seconds == pytest.approx(10.0)
+        assert math.isclose(entry.ttl_seconds, 10.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_invalidate_model_removes_only_target_model(self) -> None:
         cache = ResponseCache(max_entries=20)
@@ -143,7 +142,8 @@ class TestResponseCacheGetPut:
         s = cache.stats()
         assert s["hits"] == 2
         assert s["misses"] == 1
-        assert s["hit_rate"] == pytest.approx(2 / 3, rel=1e-4)
+        assert isinstance(s["hit_rate"], float)
+        assert math.isclose(s["hit_rate"], 2 / 3, rel_tol=1e-4, abs_tol=1e-12)
 
     def test_prometheus_metrics_contains_expected_lines(self) -> None:
         cache = ResponseCache(max_entries=5)

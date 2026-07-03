@@ -12,10 +12,9 @@ Focuses on:
 
 from __future__ import annotations
 
+import math
 import os
 from unittest.mock import patch
-
-import pytest
 
 from exo.master.rate_limiter import RateLimiter, TokenBucket
 
@@ -32,7 +31,7 @@ class TestTokenBucketRefillMath:
             bucket.last_refill = 1000.0
             result = bucket.consume(1.0)
         assert result is True
-        assert bucket.tokens == pytest.approx(9.0)
+        assert math.isclose(bucket.tokens, 9.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_refill_adds_elapsed_times_rate(self) -> None:
         """After 2 s with refill_rate=3 tok/s, tokens increase by 6."""
@@ -43,7 +42,7 @@ class TestTokenBucketRefillMath:
             result = bucket.consume(5.0)  # needs 5, gets 6 from refill
         assert result is True
         # After refill: 0 + 6 = 6; after consuming 5: 1 remaining
-        assert bucket.tokens == pytest.approx(1.0)
+        assert math.isclose(bucket.tokens, 1.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_capacity_cap_prevents_over_fill(self) -> None:
         """Even with a long elapsed, tokens never exceed capacity."""
@@ -52,7 +51,7 @@ class TestTokenBucketRefillMath:
         bucket.last_refill = t0
         with patch("time.monotonic", return_value=t0 + 100.0):  # would add 200 tokens
             bucket.consume(0.0)  # trigger refill without spending
-        assert bucket.tokens == pytest.approx(5.0)
+        assert math.isclose(bucket.tokens, 5.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_insufficient_tokens_returns_false(self) -> None:
         """Consume fails when tokens < cost."""
@@ -63,17 +62,17 @@ class TestTokenBucketRefillMath:
             result = bucket.consume(1.0)
         assert result is False
         # tokens unchanged on failure
-        assert bucket.tokens == pytest.approx(0.5)
+        assert math.isclose(bucket.tokens, 0.5, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_wait_time_zero_when_token_available(self) -> None:
         bucket = TokenBucket(capacity=5.0, refill_rate=1.0, tokens=3.0)
-        assert bucket.wait_time_seconds == pytest.approx(0.0)
+        assert math.isclose(bucket.wait_time_seconds, 0.0, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_wait_time_formula(self) -> None:
         """wait_time = (1 - tokens) / refill_rate."""
         bucket = TokenBucket(capacity=5.0, refill_rate=2.0, tokens=0.0)
         # needs 1.0 token; rate = 2.0/s → wait = 0.5 s
-        assert bucket.wait_time_seconds == pytest.approx(0.5)
+        assert math.isclose(bucket.wait_time_seconds, 0.5, rel_tol=1e-6, abs_tol=1e-12)
 
 
 # ---------------------------------------------------------------------------
@@ -105,7 +104,7 @@ class TestRateLimiterPerClientIsolation:
             rl = RateLimiter()
             bucket = rl.get_bucket("anonymous")
         # refill_rate = 6/60 = 0.1 tok/s
-        assert bucket.refill_rate == pytest.approx(0.1)
+        assert math.isclose(bucket.refill_rate, 0.1, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_api_key_client_id_hashed(self) -> None:
         """client_id_from_request with API key returns 'key:' + 8-char hex."""
@@ -149,7 +148,8 @@ class TestRateLimiterPerClientIsolation:
         s = rl.stats()
         assert s["allowed_total"] == 1
         assert s["rejected_total"] == 1
-        assert s["rejection_rate"] == pytest.approx(0.5, rel=1e-4)
+        assert isinstance(s["rejection_rate"], float)
+        assert math.isclose(s["rejection_rate"], 0.5, rel_tol=1e-4, abs_tol=1e-12)
 
     def test_reset_client_removes_bucket(self) -> None:
         rl = RateLimiter()

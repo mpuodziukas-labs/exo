@@ -37,6 +37,7 @@ class _HasReturnValue(Protocol):
 
     return_value: object
 
+
 # ---------------------------------------------------------------------------
 # GraphNode / GraphEdge dataclass tests
 # ---------------------------------------------------------------------------
@@ -135,7 +136,9 @@ class TestBuildEdgesLinkTypeClassification:
         builder = TopologyGraphBuilder()
         nodes = self._make_two_nodes()
         with patch("exo.master.topology_graph.LINK_MONITOR") as lm:
-            cast(_HasReturnValue, lm.get_stats).return_value = []  # no link stats → throughput=0
+            cast(
+                _HasReturnValue, lm.get_stats
+            ).return_value = []  # no link stats → throughput=0
             edges = builder.build_edges(nodes)
 
         unknown_edges = [e for e in edges if e.link_type == "unknown"]

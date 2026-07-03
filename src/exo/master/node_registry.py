@@ -32,6 +32,12 @@ class _CudaModule(Protocol):
     def get_device_properties(self, device: int) -> _CudaDeviceProperties: ...
 
 
+def _erase_type(x: object) -> object:
+    """Identity; erases the static type so a module object can be cast to a
+    Protocol (basedpyright rejects direct Module -> Protocol/object casts)."""
+    return x
+
+
 # ---------------------------------------------------------------------------
 # Data model
 # ---------------------------------------------------------------------------
@@ -216,10 +222,9 @@ def _detect_compute_type() -> ComputeType:
         import importlib.util
 
         if importlib.util.find_spec("torch") is not None:
-            import torch  # type: ignore[import-untyped]
+            import torch
 
-            cuda_mod = cast(_CudaModule, torch.cuda)
-            if cuda_mod.is_available():
+            if torch.cuda.is_available():
                 return "cuda"
     except Exception as exc:
         logger.debug(f"[node_registry] accelerator probe failed: {exc}")
@@ -247,9 +252,11 @@ def _detect_flops(compute_type: ComputeType) -> float:
 
     if compute_type == "cuda":
         try:
-            import torch  # type: ignore[import-untyped]
+            import torch
 
-            cuda_mod = cast(_CudaModule, torch.cuda)
+            # torch.cuda.get_device_properties is partially unknown under
+            # strict basedpyright; assert the narrow protocol we rely on.
+            cuda_mod = cast(_CudaModule, _erase_type(torch.cuda))
             props = cuda_mod.get_device_properties(0)
             # Rough FP16 estimate from SM count × 2 × clock
             sm_count = props.multi_processor_count

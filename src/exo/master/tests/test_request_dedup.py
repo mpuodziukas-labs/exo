@@ -16,6 +16,7 @@ Focuses on:
 from __future__ import annotations
 
 import asyncio
+import math
 import time
 from unittest.mock import patch
 
@@ -113,7 +114,8 @@ class TestRequestDedupCache:
         s = cache.stats()
         assert s["hits"] == 1
         assert s["misses"] == 1
-        assert s["hit_rate"] == pytest.approx(0.5)
+        assert isinstance(s["hit_rate"], float)
+        assert math.isclose(s["hit_rate"], 0.5, rel_tol=1e-6, abs_tol=1e-12)
 
     def test_content_hash_uses_first_512_bytes(self) -> None:
         body = b"x" * 600

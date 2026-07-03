@@ -37,7 +37,8 @@ class ClusterHealthAggregator:
         ok_count = sum(
             1
             for v in subsystems.values()
-            if isinstance(v, dict) and cast(dict[str, object], v).get("status") != "error"
+            if isinstance(v, dict)
+            and cast(dict[str, object], v).get("status") != "error"
         )
         total = len(subsystems)
         report["overall_health"] = (

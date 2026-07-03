@@ -12,7 +12,9 @@ _BATCH_TIMEOUT = 60.0  # seconds per item
 _MAX_BATCH_SIZE = 32
 
 # async callable(messages, model, max_tokens, temperature) -> generated text
-InferenceFn = Callable[[list[dict[str, Any]], str, int, float], Coroutine[Any, Any, str]]
+InferenceFn = Callable[
+    [list[dict[str, Any]], str, int, float], Coroutine[Any, Any, str]
+]
 
 
 @dataclass

@@ -144,9 +144,7 @@ class AutoscaleTrigger:
             rate = delta_rejected / max(delta_total, 1)
         else:
             # Fall back to lifetime rate on first call.
-            rate_raw = cast(
-                float | int | str | None, stats.get("rejection_rate", 0.0)
-            )
+            rate_raw = cast(float | int | str | None, stats.get("rejection_rate", 0.0))
             rate = float(rate_raw) if rate_raw is not None else 0.0
 
         # Update snapshot.
